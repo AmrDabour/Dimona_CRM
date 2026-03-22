@@ -1,0 +1,63 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@/lib/api";
+import type { Activity, ActivityCreate } from "@/types/activity";
+import type { PaginatedResponse } from "@/types/common";
+
+function getItems<T>(data: T[] | PaginatedResponse<T> | { items: T[] }): T[] {
+  return Array.isArray(data) ? data : data.items;
+}
+
+export function useLeadActivities(leadId: string) {
+  return useQuery({
+    queryKey: ["activities", "lead", leadId],
+    queryFn: () =>
+      api
+        .get<Activity[] | PaginatedResponse<Activity>>(`/leads/${leadId}/activities`)
+        .then((r) => getItems(r.data)),
+    enabled: !!leadId,
+  });
+}
+
+export function useCreateActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadId, data }: { leadId: string; data: ActivityCreate }) =>
+      api.post<Activity>(`/leads/${leadId}/activities`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["activities"] }),
+  });
+}
+
+export function usePendingActivities() {
+  return useQuery({
+    queryKey: ["activities", "pending"],
+    queryFn: () =>
+      api
+        .get<Activity[] | PaginatedResponse<Activity>>("/activities/pending/")
+        .then((r) => getItems(r.data)),
+  });
+}
+
+export function useOverdueActivities() {
+  return useQuery({
+    queryKey: ["activities", "overdue"],
+    queryFn: () =>
+      api
+        .get<Activity[] | { items: Activity[] }>("/activities/overdue/")
+        .then((r) => getItems(r.data)),
+  });
+}
+
+export function useCompleteActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.post(`/activities/${id}/complete`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["activities"] }),
+  });
+}
+
+export function useSyncToCalendar() {
+  return useMutation({
+    mutationFn: (activityId: string) =>
+      api.post("/integrations/calendar/sync-activity", { activity_id: activityId }),
+  });
+}

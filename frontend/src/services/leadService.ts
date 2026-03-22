@@ -1,0 +1,107 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import api from "@/lib/api";
+import type { Lead, LeadCreate, LeadUpdate, LeadStatusUpdate, LeadSource, LeadRequirement, PipelineHistory } from "@/types/lead";
+import type { PaginatedResponse, PaginationParams } from "@/types/common";
+
+const LEADS_KEY = "leads";
+
+export function useLeads(params?: PaginationParams & { status?: string; assigned_to?: string; source_id?: string; search?: string }) {
+  return useQuery({
+    queryKey: [LEADS_KEY, params],
+    queryFn: () => api.get<PaginatedResponse<Lead>>("/leads", { params }).then((r) => r.data),
+  });
+}
+
+export function useLead(id: string) {
+  return useQuery({
+    queryKey: [LEADS_KEY, id],
+    queryFn: () => api.get<Lead>(`/leads/${id}`).then((r) => r.data),
+    enabled: !!id,
+  });
+}
+
+export function useCreateLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: LeadCreate) => api.post<Lead>("/leads", data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+  });
+}
+
+export function useUpdateLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: LeadUpdate }) =>
+      api.patch<Lead>(`/leads/${id}`, data).then((r) => r.data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+  });
+}
+
+export function useDeleteLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/leads/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+  });
+}
+
+export function useUpdateLeadStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: LeadStatusUpdate }) =>
+      api.patch(`/leads/${id}/status`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+  });
+}
+
+export function useAssignLead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, assigned_to }: { id: string; assigned_to: string }) =>
+      api.post(`/leads/${id}/assign`, { assigned_to }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+  });
+}
+
+export function usePipelineHistory(leadId: string) {
+  return useQuery({
+    queryKey: ["pipeline-history", leadId],
+    queryFn: () => api.get<PipelineHistory[]>(`/leads/${leadId}/pipeline-history`).then((r) => r.data),
+    enabled: !!leadId,
+  });
+}
+
+export function useLeadSources() {
+  return useQuery({
+    queryKey: ["lead-sources"],
+    queryFn: () =>
+      api
+        .get<LeadSource[] | PaginatedResponse<LeadSource>>("/leads/sources/")
+        .then((r) => (Array.isArray(r.data) ? r.data : r.data.items)),
+  });
+}
+
+export function useLeadRequirements(leadId: string) {
+  return useQuery({
+    queryKey: ["lead-requirements", leadId],
+    queryFn: () => api.get<LeadRequirement[]>(`/leads/${leadId}/requirements`).then((r) => r.data),
+    enabled: !!leadId,
+  });
+}
+
+export function useCreateLeadRequirement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leadId, data }: { leadId: string; data: Partial<LeadRequirement> }) =>
+      api.post(`/leads/${leadId}/requirements`, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["lead-requirements"] }),
+  });
+}
+
+export function useLeadMatches(leadId: string) {
+  return useQuery({
+    queryKey: ["lead-matches", leadId],
+    queryFn: () => api.get(`/leads/${leadId}/matches`).then((r) => r.data),
+    enabled: !!leadId,
+  });
+}
