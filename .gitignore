@@ -88,3 +88,17 @@ celerybeat.pid
 # Local dev data
 data/
 uploads/
+
+# Node.js
+node_modules/
+frontend/node_modules/
+npm-debug.log
+yarn-error.log
+dist/
+frontend/dist/
+.env
+.env.local
+.env.test
+.env.production
+frontend/.env
+coverage/

@@ -1,0 +1,100 @@
+# Stack منفصل عن docker-compose.yml الأساسي:
+# تشغيل: docker compose -f docker-compose.v2.yml up -d --build
+# أو:    docker compose -p dimora-v2 -f docker-compose.v2.yml up -d --build
+name: dimora-v2
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dimora-v2-api
+    ports:
+      - "8001:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://dimora:dimora_secret@db:5432/dimora_crm
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - S3_ENDPOINT_URL=http://minio:9000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./tests:/app/tests
+      - ./alembic:/app/alembic
+    networks:
+      - dimora-v2-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: dimora-v2-db
+    environment:
+      POSTGRES_USER: dimora
+      POSTGRES_PASSWORD: dimora_secret
+      POSTGRES_DB: dimora_crm
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_v2_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dimora -d dimora_crm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dimora-v2-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: dimora-v2-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_v2_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dimora-v2-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dimora-v2-frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - api
+    networks:
+      - dimora-v2-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: dimora-v2-minio
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_v2_data:/data
+    networks:
+      - dimora-v2-network
+
+volumes:
+  postgres_v2_data:
+  redis_v2_data:
+  minio_v2_data:
+
+networks:
+  dimora-v2-network:
+    driver: bridge
