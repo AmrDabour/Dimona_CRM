@@ -28,23 +28,25 @@ import {
 } from "lucide-react";
 
 const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
-  CALL: Phone,
-  MEETING: Calendar,
-  NOTE: FileText,
-  WHATSAPP: MessageCircle,
-  EMAIL: Mail,
-  VIEWING: Eye,
-  FOLLOW_UP: RotateCw,
+  call: Phone,
+  meeting: Calendar,
+  note: FileText,
+  whatsapp: MessageCircle,
+  email: Mail,
+  viewing: Eye,
+  follow_up: RotateCw,
+  status_change: RotateCw,
 };
 
 const ACTIVITY_COLORS: Record<ActivityType, string> = {
-  CALL: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  MEETING: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-  NOTE: "bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300",
-  WHATSAPP: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
-  EMAIL: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
-  VIEWING: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
-  FOLLOW_UP: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  call: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  meeting: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+  note: "bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300",
+  whatsapp: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  email: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+  viewing: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
+  follow_up: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  status_change: "bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300",
 };
 
 function ActivityCard({ activity, isOverdue }: { activity: Activity; isOverdue?: boolean }) {

@@ -49,6 +49,32 @@ async def test_create_lead_as_agent_auto_assign(
 
 
 @pytest.mark.asyncio
+async def test_create_lead_accepts_aliases_and_blank_optional_fields(
+    client: AsyncClient,
+    test_admin,
+    admin_token: str,
+    db_session: AsyncSession,
+):
+    response = await client.post(
+        "/api/v1/leads",
+        json={
+            "fullName": "Alias Name",
+            "phoneNumber": "+201234567892",
+            "email": "",
+            "whatsappNumber": "",
+            "sourceId": "",
+            "assignedTo": "",
+            "notes": "",
+        },
+        headers=auth_headers(admin_token),
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["full_name"] == "Alias Name"
+    assert data["phone"] == "+201234567892"
+
+
+@pytest.mark.asyncio
 async def test_list_leads_rbac_agent(
     client: AsyncClient,
     test_agent: User,

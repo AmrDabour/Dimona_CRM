@@ -24,11 +24,12 @@ from app.schemas.inventory import (
     UnitSearchParams,
     UnitImageCreate,
 )
-
+from app.services.gamification_service import GamificationService
 
 class InventoryService:
     def __init__(self, db: AsyncSession):
         self.db = db
+        self._gamification = GamificationService(db)
 
     # Developer operations
     async def get_developer_by_id(self, developer_id: UUID) -> Developer:
@@ -395,6 +396,17 @@ class InventoryService:
 
         self.db.add(new_unit)
         await self.db.commit()
+        
+        # Award gamification points for adding inventory
+        await self._gamification.award_points(
+            user_id=current_user.id,
+            event_type="inventory_added",
+            reference_id=new_unit.id,
+            reference_type="unit",
+            note=f"Added new unit {new_unit.unit_number}",
+        )
+        await self.db.commit()
+
         # Return eager-loaded relations required by UnitResponse
         # to avoid async lazy-load during FastAPI serialization.
         return await self.get_unit_by_id(new_unit.id, include_relations=True)

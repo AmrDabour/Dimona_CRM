@@ -1,14 +1,11 @@
-# Stack منفصل عن docker-compose.yml الأساسي:
-# تشغيل: docker compose -f docker-compose.v2.yml up -d --build
-# أو:    docker compose -p dimora-v2 -f docker-compose.v2.yml up -d --build
-name: dimora-v2
+name: dimora-crm-v2
 
 services:
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: dimora-v2-api
+    container_name: dimora-api-v2
     ports:
       - "8001:8000"
     environment:
@@ -27,11 +24,49 @@ services:
       - ./tests:/app/tests
       - ./alembic:/app/alembic
     networks:
-      - dimora-v2-network
+      - dimora-network-v2
+
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dimora-celery-worker-v2
+    command: celery -A app.tasks worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://dimora:dimora_secret@db:5432/dimora_crm
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - api
+      - redis
+    volumes:
+      - ./app:/app/app
+    networks:
+      - dimora-network-v2
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dimora-celery-beat-v2
+    command: celery -A app.tasks beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://dimora:dimora_secret@db:5432/dimora_crm
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      - api
+      - redis
+    volumes:
+      - ./app:/app/app
+    networks:
+      - dimora-network-v2
 
   db:
     image: postgres:16-alpine
-    container_name: dimora-v2-db
+    container_name: dimora-db-v2
     environment:
       POSTGRES_USER: dimora
       POSTGRES_PASSWORD: dimora_secret
@@ -39,45 +74,45 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - postgres_v2_data:/var/lib/postgresql/data
+      - postgres_data_v2:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dimora -d dimora_crm"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - dimora-v2-network
+      - dimora-network-v2
 
   redis:
     image: redis:7-alpine
-    container_name: dimora-v2-redis
+    container_name: dimora-redis-v2
     ports:
       - "6380:6379"
     volumes:
-      - redis_v2_data:/data
+      - redis_data_v2:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - dimora-v2-network
+      - dimora-network-v2
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: dimora-v2-frontend
+    container_name: dimora-frontend-v2
     ports:
       - "3001:80"
     depends_on:
       - api
     networks:
-      - dimora-v2-network
+      - dimora-network-v2
 
   minio:
     image: minio/minio:latest
-    container_name: dimora-v2-minio
+    container_name: dimora-minio-v2
     ports:
       - "9002:9000"
       - "9003:9001"
@@ -86,15 +121,31 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     volumes:
-      - minio_v2_data:/data
+      - minio_data_v2:/data
     networks:
-      - dimora-v2-network
+      - dimora-network-v2
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dimora-seed-v2
+    command: sh -c "alembic upgrade head && python -m app.seed_demo_data"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://dimora:dimora_secret@db:5432/dimora_crm
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+    networks:
+      - dimora-network-v2
 
 volumes:
-  postgres_v2_data:
-  redis_v2_data:
-  minio_v2_data:
+  postgres_data_v2:
+  redis_data_v2:
+  minio_data_v2:
 
 networks:
-  dimora-v2-network:
+  dimora-network-v2:
     driver: bridge

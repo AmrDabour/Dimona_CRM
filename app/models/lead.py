@@ -37,6 +37,7 @@ class Lead(Base, TimestampMixin, SoftDeleteMixin):
         index=True,
     )
     lost_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     assigned_to: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),

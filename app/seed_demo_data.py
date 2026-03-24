@@ -11,6 +11,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 
+from app.config import settings
 from app.core.permissions import UserRole
 from app.core.security import get_password_hash
 from app.database import AsyncSessionLocal
@@ -32,6 +33,7 @@ async def get_or_create_user(
     full_name: str,
     role: UserRole,
     phone: str | None = None,
+    password: str = None,
 ) -> User:
     async with AsyncSessionLocal() as db:
         existing = await db.scalar(select(User).where(User.email == email))
@@ -43,7 +45,7 @@ async def get_or_create_user(
             full_name=full_name,
             phone=phone,
             role=role,
-            hashed_password=get_password_hash(DEMO_PASSWORD),
+            hashed_password=get_password_hash(password or DEMO_PASSWORD),
             is_active=True,
         )
         db.add(user)
@@ -55,6 +57,14 @@ async def get_or_create_user(
 async def seed() -> None:
     async with AsyncSessionLocal() as db:
         # Team + users
+        admin = await get_or_create_user(
+            settings.admin_email,
+            "System Admin",
+            UserRole.ADMIN,
+            "+201000000000",
+            settings.admin_password
+        )
+        
         manager = await get_or_create_user(
             "manager.demo@dimora.com",
             "Nadia Sales Manager",
@@ -189,6 +199,9 @@ async def seed() -> None:
             ("Laila Ibrahim", "+201200000010", "laila.demo@client.com", "WhatsApp", agent_2.id, "negotiation", "buy"),
         ]
 
+        import random
+        from datetime import datetime, timedelta, timezone
+
         for full_name, phone, email, source_name, assigned_to, status, intent in lead_defs:
             lead = await db.scalar(select(Lead).where(Lead.phone == phone))
             if not lead:
@@ -206,11 +219,14 @@ async def seed() -> None:
                 db.add(lead)
                 await db.flush()
 
-            # Add one activity if none exists for this lead.
+            # Add multiple activities if none exist for this lead.
             existing_activity = await db.scalar(
                 select(Activity).where(Activity.lead_id == lead.id).limit(1)
             )
             if not existing_activity:
+                now = datetime.now(timezone.utc)
+                
+                # 1. A completed note (history)
                 db.add(
                     Activity(
                         lead_id=lead.id,
@@ -221,10 +237,29 @@ async def seed() -> None:
                     )
                 )
 
+                # 2. A pending (future) or overdue (past) activity
+                is_overdue = random.choice([True, False])
+                days_offset = random.randint(1, 4)
+                scheduled_date = now - timedelta(days=days_offset) if is_overdue else now + timedelta(days=days_offset)
+                
+                activity_type = random.choice([ActivityType.CALL, ActivityType.MEETING, ActivityType.WHATSAPP])
+                
+                db.add(
+                    Activity(
+                        lead_id=lead.id,
+                        user_id=assigned_to,
+                        type=activity_type,
+                        description=f"Scheduled follow-up {activity_type.value}.",
+                        scheduled_at=scheduled_date,
+                        is_completed=False,
+                    )
+                )
+
         await db.commit()
 
     print("Demo data seeded successfully.")
     print("Demo users:")
+    print("  admin@dimora.com / Admin@123")
     print("  manager.demo@dimora.com / Demo@12345")
     print("  agent1.demo@dimora.com / Demo@12345")
     print("  agent2.demo@dimora.com / Demo@12345")

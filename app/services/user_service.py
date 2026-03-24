@@ -62,8 +62,8 @@ class UserService:
         if created_by.role != UserRole.ADMIN:
             raise BadRequestException("Only admins can create users")
 
-        existing = await self.get_user_by_email(user_data.email)
-        if existing:
+        existing_result = await self.db.execute(select(User).where(User.email == user_data.email))
+        if existing_result.scalar_one_or_none():
             raise ConflictException("User with this email already exists")
 
         if user_data.team_id:
@@ -100,8 +100,8 @@ class UserService:
             raise BadRequestException("You can only update your own profile")
 
         if user_data.email and user_data.email != user.email:
-            existing = await self.get_user_by_email(user_data.email)
-            if existing:
+            existing_result = await self.db.execute(select(User).where(User.email == user_data.email))
+            if existing_result.scalar_one_or_none():
                 raise ConflictException("User with this email already exists")
             user.email = user_data.email
 

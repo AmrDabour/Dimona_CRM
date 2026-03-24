@@ -1,5 +1,7 @@
 {
-  "app": { "name": "Dimora CRM" },
+  "app": {
+    "name": "Dimora CRM"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "leads": "Leads",
@@ -28,7 +30,7 @@
     "login": "Login",
     "signIn": "Sign In",
     "logout": "Logout",
-    "email": "Email",
+    "email": "email",
     "emailPlaceholder": "Enter your email",
     "password": "Password",
     "passwordPlaceholder": "Enter your password",
@@ -57,7 +59,7 @@
     "status": "Status",
     "name": "Name",
     "description": "Description",
-    "email": "Email",
+    "email": "email",
     "phone": "Phone",
     "role": "Role",
     "team": "Team",
@@ -111,14 +113,17 @@
     "leadDetail": "Lead Details",
     "fullName": "Full Name",
     "phone": "Phone",
-    "email": "Email",
-    "whatsapp": "WhatsApp",
+    "email": "email",
+    "whatsapp": "whatsapp",
     "source": "Source",
     "assignedTo": "Assigned To",
     "status": "Status",
     "lostReason": "Lost Reason",
     "customFields": "Custom Fields",
     "requirements": "Requirements",
+    "budgetRange": "Budget Range",
+    "budgetMin": "Budget Min",
+    "budgetMax": "Budget Max",
     "activities": "Activities",
     "pipelineHistory": "Pipeline History",
     "matchedUnits": "Matched Units",
@@ -128,6 +133,7 @@
     "changeStatus": "Change Status",
     "addNote": "Add Note",
     "sendWhatsApp": "Send WhatsApp",
+    "notes": "Notes",
     "importLeads": "Import Leads",
     "exportLeads": "Export Leads",
     "statuses": {
@@ -147,7 +153,7 @@
     "leadsInStage": "leads",
     "new": "New",
     "contacted": "Contacted",
-    "viewing": "Viewing",
+    "viewing": "viewing",
     "negotiation": "Negotiation",
     "won": "Won",
     "lost": "Lost"
@@ -232,13 +238,13 @@
     "markComplete": "Mark Complete",
     "syncCalendar": "Sync to Calendar",
     "types": {
-      "CALL": "Call",
-      "MEETING": "Meeting",
-      "NOTE": "Note",
-      "WHATSAPP": "WhatsApp",
-      "EMAIL": "Email",
-      "VIEWING": "Viewing",
-      "FOLLOW_UP": "Follow Up"
+      "call": "call",
+      "meeting": "meeting",
+      "note": "note",
+      "whatsapp": "whatsapp",
+      "email": "email",
+      "viewing": "viewing",
+      "follow_up": "Follow Up"
     }
   },
   "reports": {
@@ -254,7 +260,11 @@
     "conversionRate": "Conversion Rate",
     "costPerLead": "Cost per Lead",
     "costPerWon": "Cost per Won",
-    "campaignCost": "Campaign Cost"
+    "campaignCost": "Campaign Cost",
+    "pointsSummary": "Points Summary",
+    "showDetails": "Show Details",
+    "hideDetails": "Hide Details",
+    "pointHistory": "Point History"
   },
   "admin": {
     "users": "User Management",
@@ -320,6 +330,13 @@
     "runComplianceCheck": "Run Compliance Check",
     "complianceCheckDone": "Compliance check complete",
     "agentsChecked": "agents checked",
-    "awarded": "awarded"
+    "awarded": "awarded",
+    "pointsBreakdown": "Points Breakdown & Rules",
+    "howToEarn": "How to Earn Points",
+    "history": "Transaction History",
+    "noRules": "No rules currently configured.",
+    "noHistory": "No point history available for this month.",
+    "pointsPerEvent": "Points",
+    "minutes": "mins"
   }
 }

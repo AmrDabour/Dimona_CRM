@@ -30,6 +30,7 @@ import { cn, formatDate, formatDateTime, formatCurrency } from "@/lib/utils";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   useLead,
+  useUpdateLead,
   useUpdateLeadStatus,
   useAssignLead,
   useLeadSources,
@@ -84,46 +85,52 @@ import {
 // ── Constants ───────────────────────────────────────────────────────
 
 const STATUS_VARIANT: Record<LeadStatus, string> = {
-  NEW: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  CONTACTED: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
-  VIEWING_SCHEDULED: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
-  VIEWING_DONE: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
-  NEGOTIATION: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
-  WON: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-  LOST: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
-  UNQUALIFIED: "bg-gray-100 text-gray-800 dark:bg-gray-800/40 dark:text-gray-300",
+  new: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+  contacted: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
+  viewing: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
+  negotiation: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
+  won: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+  lost: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
 };
 
 const ALL_STATUSES: LeadStatus[] = [
-  "NEW",
-  "CONTACTED",
-  "VIEWING_SCHEDULED",
-  "VIEWING_DONE",
-  "NEGOTIATION",
-  "WON",
-  "LOST",
-  "UNQUALIFIED",
+  "new",
+  "contacted",
+  "viewing",
+  "negotiation",
+  "won",
+  "lost",
 ];
 
 const ACTIVITY_TYPES: ActivityType[] = [
-  "CALL",
-  "MEETING",
-  "NOTE",
-  "WHATSAPP",
-  "EMAIL",
-  "VIEWING",
-  "FOLLOW_UP",
+  "call",
+  "meeting",
+  "note",
+  "whatsapp",
+  "email",
+  "viewing",
+  "follow_up",
 ];
 
 const ACTIVITY_ICON: Record<ActivityType, typeof Phone> = {
-  CALL: Phone,
-  MEETING: CalendarDays,
-  NOTE: Pencil,
-  WHATSAPP: MessageCircle,
-  EMAIL: Mail,
-  VIEWING: Building2,
-  FOLLOW_UP: Clock,
+  call: Phone,
+  meeting: CalendarDays,
+  note: Pencil,
+  whatsapp: MessageCircle,
+  email: Mail,
+  viewing: Building2,
+  follow_up: Clock,
+  status_change: Clock,
 };
+
+const REQUIREMENT_PROPERTY_TYPES = [
+  "apartment",
+  "villa",
+  "office",
+  "land",
+  "duplex",
+  "penthouse",
+] as const;
 
 // ── Schemas ─────────────────────────────────────────────────────────
 
@@ -134,7 +141,7 @@ const statusChangeSchema = z
     lost_reason: z.string().optional(),
   })
   .refine(
-    (d) => d.status !== "LOST" || (d.lost_reason && d.lost_reason.length > 0),
+    (d) => d.status !== "lost" || (d.lost_reason && d.lost_reason.length > 0),
     { path: ["lost_reason"], message: "required" },
   );
 
@@ -148,12 +155,21 @@ const activitySchema = z.object({
 
 type ActivityFormValues = z.infer<typeof activitySchema>;
 
+const optionalNumber = z.preprocess(
+  (value) => {
+    if (value === "" || value === null || value === undefined) return undefined;
+    const asNumber = Number(value);
+    return Number.isNaN(asNumber) ? undefined : asNumber;
+  },
+  z.number().nonnegative().optional(),
+);
+
 const requirementSchema = z.object({
-  budget_min: z.coerce.number().optional(),
-  budget_max: z.coerce.number().optional(),
+  budget_min: optionalNumber,
+  budget_max: optionalNumber,
   preferred_locations: z.string().optional(),
-  min_bedrooms: z.coerce.number().optional(),
-  min_area_sqm: z.coerce.number().optional(),
+  min_bedrooms: optionalNumber,
+  min_area_sqm: optionalNumber,
   property_type: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -190,10 +206,23 @@ export default function LeadDetailPage() {
 
   // Mutations
   const updateStatus = useUpdateLeadStatus();
+  const updateLead = useUpdateLead();
   const assignLead = useAssignLead();
   const createActivity = useCreateActivity();
   const completeActivity = useCompleteActivity();
   const createRequirement = useCreateLeadRequirement();
+
+  const saveNotes = async () => {
+    setNotesSaving(true);
+    try {
+      await updateLead.mutateAsync({ id: id!, data: { notes: notesValue || undefined } });
+      toast.success(t("leads.notes"));
+    } catch {
+      toast.error(t("common.error"));
+    } finally {
+      setNotesSaving(false);
+    }
+  };
 
   // Dialog state
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
@@ -201,6 +230,8 @@ export default function LeadDetailPage() {
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [requirementDialogOpen, setRequirementDialogOpen] = useState(false);
   const [selectedAssignee, setSelectedAssignee] = useState("");
+  const [notesValue, setNotesValue] = useState(lead?.notes ?? "");
+  const [notesSaving, setNotesSaving] = useState(false);
 
   // ── Status change form ──────────────────────────────────────────
 
@@ -277,13 +308,28 @@ export default function LeadDetailPage() {
 
   const onRequirementSubmit = async (values: RequirementFormValues) => {
     try {
+      const normalizedPropertyType = values.property_type?.trim().toLowerCase();
       await createRequirement.mutateAsync({
         leadId: id!,
         data: {
-          ...values,
+          budget_min: values.budget_min,
+          budget_max: values.budget_max,
+          min_bedrooms: values.min_bedrooms,
+          min_area_sqm: values.min_area_sqm,
+          notes: values.notes?.trim() || undefined,
           preferred_locations: values.preferred_locations
-            ? values.preferred_locations.split(",").map((l) => l.trim())
+            ? values.preferred_locations
+                .split(",")
+                .map((l) => l.trim())
+                .filter(Boolean)
             : undefined,
+          property_type:
+            normalizedPropertyType &&
+            REQUIREMENT_PROPERTY_TYPES.includes(
+              normalizedPropertyType as (typeof REQUIREMENT_PROPERTY_TYPES)[number],
+            )
+              ? normalizedPropertyType
+              : undefined,
         },
       });
       toast.success(t("leads.requirements"));
@@ -381,6 +427,23 @@ export default function LeadDetailPage() {
             label={t("common.status")}
             value={t(`leads.statuses.${lead.status}`, lead.status)}
           />
+          {/* Notes – always visible, inline editable */}
+          <div className="sm:col-span-2 lg:col-span-4 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">{t("leads.notes")}</p>
+            <textarea
+              value={notesValue}
+              onChange={(e) => setNotesValue(e.target.value)}
+              rows={3}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y min-h-[80px]"
+              placeholder={t("leads.notes")}
+            />
+            {notesValue !== (lead.notes ?? "") && (
+              <Button size="sm" onClick={saveNotes} disabled={notesSaving}>
+                {notesSaving && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
+                {t("common.save")}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -451,7 +514,7 @@ export default function LeadDetailPage() {
                     {(req.budget_min != null || req.budget_max != null) && (
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">
-                          {t("reports.campaignCost", "Budget")}
+                          {t("leads.budgetRange", "Budget Range")}
                         </span>
                         <span>
                           {req.budget_min != null && formatCurrency(req.budget_min)}
@@ -790,14 +853,14 @@ export default function LeadDetailPage() {
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>{t("reports.campaignCost", "Budget Min")}</Label>
+                <Label>{t("leads.budgetMin", "Budget Min")}</Label>
                 <Input
                   type="number"
                   {...requirementForm.register("budget_min")}
                 />
               </div>
               <div className="space-y-2">
-                <Label>{t("reports.campaignCost", "Budget Max")}</Label>
+                <Label>{t("leads.budgetMax", "Budget Max")}</Label>
                 <Input
                   type="number"
                   {...requirementForm.register("budget_max")}
@@ -826,7 +889,30 @@ export default function LeadDetailPage() {
               </div>
               <div className="space-y-2">
                 <Label>{t("inventory.propertyType")}</Label>
-                <Input {...requirementForm.register("property_type")} />
+                <Controller
+                  control={requirementForm.control}
+                  name="property_type"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value || "__none__"}
+                      onValueChange={(value) =>
+                        field.onChange(value === "__none__" ? "" : value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t("common.select", "Select")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{t("common.all", "All")}</SelectItem>
+                        {REQUIREMENT_PROPERTY_TYPES.map((pt) => (
+                          <SelectItem key={pt} value={pt}>
+                            {t(`inventory.propertyTypes.${pt}`, pt)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
 

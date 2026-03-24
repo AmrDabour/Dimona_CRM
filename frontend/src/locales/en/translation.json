@@ -119,6 +119,9 @@
     "lostReason": "Lost Reason",
     "customFields": "Custom Fields",
     "requirements": "Requirements",
+    "budgetRange": "Budget Range",
+    "budgetMin": "Budget Min",
+    "budgetMax": "Budget Max",
     "activities": "Activities",
     "pipelineHistory": "Pipeline History",
     "matchedUnits": "Matched Units",
@@ -128,6 +131,7 @@
     "changeStatus": "Change Status",
     "addNote": "Add Note",
     "sendWhatsApp": "Send WhatsApp",
+    "notes": "Notes",
     "importLeads": "Import Leads",
     "exportLeads": "Export Leads",
     "statuses": {

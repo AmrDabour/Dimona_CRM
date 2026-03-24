@@ -1,12 +1,10 @@
 export type LeadStatus =
-  | "NEW"
-  | "CONTACTED"
-  | "VIEWING_SCHEDULED"
-  | "VIEWING_DONE"
-  | "NEGOTIATION"
-  | "WON"
-  | "LOST"
-  | "UNQUALIFIED";
+  | "new"
+  | "contacted"
+  | "viewing"
+  | "negotiation"
+  | "won"
+  | "lost";
 
 export interface LeadSourceInfo {
   id: string;
@@ -28,6 +26,7 @@ export interface Lead {
   whatsapp_number?: string;
   status: LeadStatus;
   lost_reason?: string;
+  notes?: string;
   assigned_to?: string;
   source_id?: string;
   custom_fields?: Record<string, unknown>;
@@ -45,6 +44,7 @@ export interface LeadCreate {
   source_id?: string;
   assigned_to?: string;
   custom_fields?: Record<string, unknown>;
+  notes?: string;
 }
 
 export interface LeadUpdate {
@@ -53,6 +53,7 @@ export interface LeadUpdate {
   email?: string;
   whatsapp_number?: string;
   custom_fields?: Record<string, unknown>;
+  notes?: string;
 }
 
 export interface LeadStatusUpdate {

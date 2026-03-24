@@ -119,6 +119,9 @@
     "lostReason": "سبب الخسارة",
     "customFields": "حقول مخصصة",
     "requirements": "المتطلبات",
+    "budgetRange": "ميزانية العميل",
+    "budgetMin": "أقل ميزانية",
+    "budgetMax": "أعلى ميزانية",
     "activities": "الأنشطة",
     "pipelineHistory": "سجل المراحل",
     "matchedUnits": "الوحدات المطابقة",
@@ -128,6 +131,7 @@
     "changeStatus": "تغيير الحالة",
     "addNote": "إضافة ملاحظة",
     "sendWhatsApp": "إرسال واتساب",
+    "notes": "ملاحظات",
     "importLeads": "استيراد العملاء",
     "exportLeads": "تصدير العملاء",
     "statuses": {

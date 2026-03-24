@@ -78,6 +78,31 @@ async def get_agent_points(
     return await svc.get_user_monthly_points(agent_id, _parse_month(month))
 
 
+@router.get("/agent/{agent_id}/points/history")
+async def get_agent_point_history(
+    agent_id: UUID,
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    month: Optional[str] = Query(None, description="YYYY-MM format"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+):
+    if current_user.role == UserRole.MANAGER:
+        from sqlalchemy import select
+        from app.models.user import User as UserModel
+
+        agent_result = await db.execute(select(UserModel).where(UserModel.id == agent_id))
+        agent = agent_result.scalar_one_or_none()
+        if not agent or agent.team_id != current_user.team_id:
+            raise PermissionDeniedException("You can only view your team members' points")
+
+    svc = GamificationService(db)
+    items, total = await svc.get_point_history(
+        agent_id, _parse_month(month), page, page_size,
+    )
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
 # ── Admin: Rules & Tiers ────────────────────────────────────────────
 
 @router.get("/rules")

@@ -58,39 +58,56 @@ import {
 // ── Status badge colours ────────────────────────────────────────────
 
 const STATUS_VARIANT: Record<LeadStatus, string> = {
-  NEW: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  CONTACTED: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
-  VIEWING_SCHEDULED: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
-  VIEWING_DONE: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
-  NEGOTIATION: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
-  WON: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-  LOST: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
-  UNQUALIFIED: "bg-gray-100 text-gray-800 dark:bg-gray-800/40 dark:text-gray-300",
+  new: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+  contacted: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300",
+  viewing: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
+  negotiation: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
+  won: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+  lost: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
 };
 
 const ALL_STATUSES: LeadStatus[] = [
-  "NEW",
-  "CONTACTED",
-  "VIEWING_SCHEDULED",
-  "VIEWING_DONE",
-  "NEGOTIATION",
-  "WON",
-  "LOST",
-  "UNQUALIFIED",
+  "new",
+  "contacted",
+  "viewing",
+  "negotiation",
+  "won",
+  "lost",
 ];
 
 // ── Form schema ─────────────────────────────────────────────────────
 
+// Keep in sync with app/schemas/lead.py (LeadCreate / LeadUpdate)
 const leadFormSchema = z.object({
-  full_name: z.string().min(1),
-  phone: z.string().min(1),
-  email: z.string().email().optional().or(z.literal("")),
-  whatsapp_number: z.string().optional(),
+  full_name: z.string().min(2).max(100),
+  phone: z.string().min(8).max(20),
+  email: z.union([z.literal(""), z.string().email()]),
+  whatsapp_number: z.union([z.literal(""), z.string().max(20)]),
   source_id: z.string().optional(),
   assigned_to: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 type LeadFormValues = z.infer<typeof leadFormSchema>;
+
+function formatApiValidationDetail(err: unknown): string | null {
+  const ax = err as { response?: { data?: { detail?: unknown } } };
+  const detail = ax.response?.data?.detail;
+  if (detail == null) return null;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((row: { loc?: unknown[]; msg?: string }) => {
+        const loc = Array.isArray(row.loc)
+          ? row.loc.filter((x) => typeof x === "string" && x !== "body").join(".")
+          : "";
+        return loc ? `${loc}: ${row.msg ?? ""}` : (row.msg ?? "");
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+  return null;
+}
 
 // ── Page Component ──────────────────────────────────────────────────
 
@@ -142,6 +159,7 @@ export default function LeadsPage() {
       whatsapp_number: "",
       source_id: "",
       assigned_to: "",
+      notes: "",
     },
   });
 
@@ -154,6 +172,7 @@ export default function LeadsPage() {
       whatsapp_number: "",
       source_id: "",
       assigned_to: "",
+      notes: "",
     });
     setFormOpen(true);
   };
@@ -167,6 +186,7 @@ export default function LeadsPage() {
       whatsapp_number: lead.whatsapp_number ?? "",
       source_id: lead.source_id ?? "",
       assigned_to: lead.assigned_to ?? "",
+      notes: lead.notes ?? "",
     });
     setFormOpen(true);
   };
@@ -179,6 +199,7 @@ export default function LeadsPage() {
         whatsapp_number: values.whatsapp_number || undefined,
         source_id: values.source_id || undefined,
         assigned_to: values.assigned_to || undefined,
+        notes: values.notes || undefined,
       };
 
       if (editingLead) {
@@ -189,6 +210,7 @@ export default function LeadsPage() {
             phone: payload.phone,
             email: payload.email,
             whatsapp_number: payload.whatsapp_number,
+            notes: payload.notes,
           },
         });
         toast.success(t("leads.editLead"));
@@ -197,8 +219,9 @@ export default function LeadsPage() {
         toast.success(t("leads.createLead"));
       }
       setFormOpen(false);
-    } catch {
-      toast.error(t("common.error", "Something went wrong"));
+    } catch (err) {
+      const v = formatApiValidationDetail(err);
+      toast.error(v ?? t("common.error", "Something went wrong"));
     }
   };
 
@@ -404,7 +427,8 @@ export default function LeadsPage() {
                 <Input {...register("full_name")} />
                 {errors.full_name && (
                   <p className="text-xs text-destructive">
-                    {t("leads.fullName")} {t("validation.required", "is required")}
+                    {errors.full_name.message ||
+                      `${t("leads.fullName")} ${t("validation.required", "is required")}`}
                   </p>
                 )}
               </div>
@@ -414,7 +438,8 @@ export default function LeadsPage() {
                 <Input {...register("phone")} />
                 {errors.phone && (
                   <p className="text-xs text-destructive">
-                    {t("leads.phone")} {t("validation.required", "is required")}
+                    {errors.phone.message ||
+                      `${t("leads.phone")} ${t("validation.required", "is required")}`}
                   </p>
                 )}
               </div>
@@ -492,6 +517,17 @@ export default function LeadsPage() {
                   />
                 </div>
               )}
+            </div>
+
+            {/* Notes - full width */}
+            <div className="space-y-2 sm:col-span-2">
+              <Label>{t("leads.notes")}</Label>
+              <textarea
+                {...register("notes")}
+                rows={3}
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder={t("leads.notes")}
+              />
             </div>
 
             <DialogFooter>

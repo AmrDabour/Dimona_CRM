@@ -1,11 +1,12 @@
 export type ActivityType =
-  | "CALL"
-  | "MEETING"
-  | "NOTE"
-  | "WHATSAPP"
-  | "EMAIL"
-  | "VIEWING"
-  | "FOLLOW_UP";
+  | "call"
+  | "meeting"
+  | "note"
+  | "whatsapp"
+  | "email"
+  | "viewing"
+  | "follow_up"
+  | "status_change";
 
 export interface Activity {
   id: string;

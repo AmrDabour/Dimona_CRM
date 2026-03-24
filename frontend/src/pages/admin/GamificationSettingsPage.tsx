@@ -74,10 +74,20 @@ function PointRulesTab() {
             <TableBody>
               {data?.point_rules.map((rule) => (
                 <TableRow key={rule.id}>
-                  <TableCell className="font-mono text-sm">{rule.event_type}</TableCell>
-                  <TableCell className="capitalize">{rule.category}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {t(`gamification.events.${rule.event_type}`, {
+                      defaultValue: rule.event_type,
+                    })}
+                  </TableCell>
+                  <TableCell className="capitalize">
+                    {t(`gamification.categories.${rule.category}`, {
+                      defaultValue: rule.category,
+                    })}
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {rule.description}
+                    {t(`gamification.descriptions.${rule.event_type}`, {
+                      defaultValue: rule.description,
+                    })}
                   </TableCell>
                   <TableCell>
                     <Input
@@ -141,9 +151,15 @@ function PointRulesTab() {
             <TableBody>
               {data?.penalty_rules.map((rule) => (
                 <TableRow key={rule.id}>
-                  <TableCell className="font-mono text-sm">{rule.event_type}</TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {t(`gamification.events.${rule.event_type}`, {
+                      defaultValue: rule.event_type,
+                    })}
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {rule.description}
+                    {t(`gamification.descriptions.${rule.event_type}`, {
+                      defaultValue: rule.description,
+                    })}
                   </TableCell>
                   <TableCell>
                     <Input

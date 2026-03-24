@@ -81,7 +81,7 @@ function PodiumCard({
     >
       <CardContent className="flex flex-col items-center gap-1 p-4">
         <Icon className={cn("h-7 w-7", iconColors[place])} />
-        <p className="text-sm font-bold truncate max-w-[120px]">{entry.full_name}</p>
+        <p className="text-sm font-bold text-center px-1 line-clamp-2 min-h-[2.5em]">{entry.full_name}</p>
         <p className="text-lg font-black">{entry.total_points}</p>
         <TierBadge name={entry.tier.name} />
       </CardContent>

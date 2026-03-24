@@ -5,11 +5,19 @@ import {
   useAgentPerformance,
   useMyPerformance,
 } from "@/services/reportService";
+import {
+  useAgentPoints,
+  useAgentPointHistory,
+  useMyPoints,
+  usePointHistory as useMyPointHistory,
+} from "@/services/gamificationService";
+import { AgentPointsBreakdownModal } from "@/components/gamification/AgentPointsBreakdownModal";
 import { useUsers } from "@/services/userService";
 import { usePermissions } from "@/hooks/usePermissions";
 import { StatCard } from "@/components/shared/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -26,6 +34,10 @@ import {
   Phone,
   Calendar,
   BarChart3,
+  Star,
+  Medal,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   BarChart,
@@ -48,6 +60,12 @@ const CHART_COLORS = [
   "hsl(199, 89%, 48%)",
 ];
 
+const TIER_COLORS: Record<string, string> = {
+  bronze: "text-orange-400",
+  silver: "text-slate-300",
+  gold: "text-yellow-400",
+};
+
 function PerformanceSkeleton() {
   return (
     <div className="space-y-6">
@@ -66,7 +84,8 @@ export default function AgentPerformancePage() {
   const { t } = useTranslation();
   const { id: paramId } = useParams<{ id: string }>();
   const { isAdmin } = usePermissions();
-  const [selectedAgentId, setSelectedAgentId] = useState(paramId ?? "");
+const [selectedAgentId, setSelectedAgentId] = useState(paramId ?? "");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const agentId = selectedAgentId || paramId || "";
   const useOwnPerformance = !agentId;
@@ -75,6 +94,16 @@ export default function AgentPerformancePage() {
     useAgentPerformance(agentId);
   const { data: myPerformance, isLoading: myLoading } = useMyPerformance();
   const { data: users } = useUsers();
+
+  // Gamification data
+  const { data: agentPointsData } = useAgentPoints(agentId);
+  const { data: pointHistoryData } = useAgentPointHistory(agentId);
+
+  const { data: myPointsData } = useMyPoints();
+  const { data: myPointHistoryData } = useMyPointHistory();
+
+  const activePoints = useOwnPerformance ? myPointsData : agentPointsData;
+  const activePointHistory = useOwnPerformance ? myPointHistoryData : pointHistoryData;
 
   const performance = useOwnPerformance ? myPerformance : agentPerformance;
   const isLoading = useOwnPerformance ? myLoading : agentLoading;
@@ -94,6 +123,34 @@ export default function AgentPerformancePage() {
           count,
         })
       )
+    : [];
+
+  const tierName = activePoints?.tier?.name ?? "bronze";
+  const tierColor = TIER_COLORS[tierName] ?? "text-orange-400";
+
+  const pointCategories = activePoints
+    ? [
+        {
+          label: t("gamification.activityShort"),
+          value: activePoints.activity_points,
+          color: "bg-blue-500",
+        },
+        {
+          label: t("gamification.complianceShort"),
+          value: activePoints.compliance_points,
+          color: "bg-green-500",
+        },
+        {
+          label: t("gamification.conversionShort"),
+          value: activePoints.conversion_points,
+          color: "bg-violet-500",
+        },
+        {
+          label: t("gamification.penaltyPts"),
+          value: activePoints.penalty_points,
+          color: "bg-red-500",
+        },
+      ]
     : [];
 
   return (
@@ -161,6 +218,63 @@ export default function AgentPerformancePage() {
           icon={Target}
         />
       </div>
+
+      {/* ── Points Summary ─────────────────────────────────────────── */}
+      {activePoints && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-yellow-400" />
+              {t("reports.pointsSummary", "Points Summary")}
+            </CardTitle>
+            <div className={`flex items-center gap-1.5 text-sm font-semibold ${tierColor}`}>
+              <Medal className="h-4 w-4" />
+              {t(`gamification.${tierName}`, tierName)}
+              {activePoints.rank > 0 && (
+                <span className="ms-2 font-normal text-muted-foreground">
+                  #{activePoints.rank}
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center">
+              <p className="text-4xl font-bold">{activePoints.total_points}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("gamification.totalPoints")}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-4">
+              {pointCategories.map((cat) => (
+                <div key={cat.label} className="flex items-center gap-3 rounded-lg border p-3">
+                  <div className={`h-3 w-3 rounded-full ${cat.color}`} />
+                  <div>
+                    <p className="text-lg font-bold">{cat.value}</p>
+                    <p className="text-xs text-muted-foreground">{cat.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Star className="me-2 h-4 w-4" />
+              {t("gamification.pointsBreakdown")}
+            </Button>
+          </CardContent>
+          <AgentPointsBreakdownModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            pointHistory={activePointHistory}
+            agentName={performance?.agent?.name}
+          />
+        </Card>
+      )}
 
       {/* Pipeline chart */}
       <Card>

@@ -24,7 +24,10 @@ export function useCreateLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: LeadCreate) => api.post<Lead>("/leads", data).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [LEADS_KEY] });
+      qc.invalidateQueries({ queryKey: ["pipeline"] });
+    },
   });
 }
 
@@ -33,7 +36,10 @@ export function useUpdateLead() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: LeadUpdate }) =>
       api.patch<Lead>(`/leads/${id}`, data).then((r) => r.data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [LEADS_KEY] });
+      qc.invalidateQueries({ queryKey: ["pipeline"] });
+    },
   });
 }
 
@@ -41,7 +47,10 @@ export function useDeleteLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.delete(`/leads/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [LEADS_KEY] });
+      qc.invalidateQueries({ queryKey: ["pipeline"] });
+    },
   });
 }
 
@@ -50,7 +59,10 @@ export function useUpdateLeadStatus() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: LeadStatusUpdate }) =>
       api.patch(`/leads/${id}/status`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [LEADS_KEY] });
+      qc.invalidateQueries({ queryKey: ["pipeline"] });
+    },
   });
 }
 
@@ -59,14 +71,20 @@ export function useAssignLead() {
   return useMutation({
     mutationFn: ({ id, assigned_to }: { id: string; assigned_to: string }) =>
       api.post(`/leads/${id}/assign`, { assigned_to }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [LEADS_KEY] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [LEADS_KEY] });
+      qc.invalidateQueries({ queryKey: ["pipeline"] });
+    },
   });
 }
 
 export function usePipelineHistory(leadId: string) {
   return useQuery({
     queryKey: ["pipeline-history", leadId],
-    queryFn: () => api.get<PipelineHistory[]>(`/leads/${leadId}/pipeline-history`).then((r) => r.data),
+    queryFn: () =>
+      api
+        .get<PipelineHistory[] | { items: PipelineHistory[] }>(`/leads/${leadId}/pipeline-history`)
+        .then((r) => (Array.isArray(r.data) ? r.data : r.data.items ?? [])),
     enabled: !!leadId,
   });
 }
@@ -84,7 +102,10 @@ export function useLeadSources() {
 export function useLeadRequirements(leadId: string) {
   return useQuery({
     queryKey: ["lead-requirements", leadId],
-    queryFn: () => api.get<LeadRequirement[]>(`/leads/${leadId}/requirements`).then((r) => r.data),
+    queryFn: () =>
+      api
+        .get<LeadRequirement[] | { items: LeadRequirement[] }>(`/leads/${leadId}/requirements`)
+        .then((r) => (Array.isArray(r.data) ? r.data : r.data.items ?? [])),
     enabled: !!leadId,
   });
 }
@@ -101,7 +122,42 @@ export function useCreateLeadRequirement() {
 export function useLeadMatches(leadId: string) {
   return useQuery({
     queryKey: ["lead-matches", leadId],
-    queryFn: () => api.get(`/leads/${leadId}/matches`).then((r) => r.data),
+    queryFn: () =>
+      api
+        .get(`/leads/${leadId}/matches`)
+        .then((r) => {
+          const payload = r.data as {
+            items?: Array<{
+              unit?: Record<string, unknown>;
+              relevance_score?: number;
+            }>;
+          };
+
+          const items = payload?.items ?? [];
+          return items
+            .map((entry) => {
+              const unit = entry.unit ?? {};
+              const project = (unit.project as Record<string, unknown> | undefined) ?? {};
+
+              return {
+                ...unit,
+                relevance_score: entry.relevance_score,
+                project_name: (project.name as string | undefined) ?? undefined,
+                location:
+                  (project.location as string | undefined) ??
+                  (project.city as string | undefined) ??
+                  undefined,
+                total_price: (unit.price as number | undefined) ?? undefined,
+              } as Record<string, unknown>;
+            })
+            .filter((unit) => Boolean(unit.id));
+        })
+        .catch((err) => {
+          if (err?.response?.status === 404) {
+            return [];
+          }
+          throw err;
+        }),
     enabled: !!leadId,
   });
 }

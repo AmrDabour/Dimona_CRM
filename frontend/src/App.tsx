@@ -34,10 +34,18 @@ function LoadingFallback() {
 
 export default function App() {
   const theme = useUIStore((s) => s.theme);
+  const { i18n } = useTranslation();
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
+
+  // Ensure direction is set correctly on mount and language change
+  useEffect(() => {
+    const dir = i18n.language === "ar" ? "rtl" : "ltr";
+    document.documentElement.dir = dir;
+    document.documentElement.lang = i18n.language;
+  }, [i18n.language]);
 
   return (
     <Suspense fallback={<LoadingFallback />}>

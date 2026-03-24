@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     api_v1_prefix: str = "/api/v1"
 
+    # Admin User
+    admin_email: str = "admin@dimora.com"
+    admin_password: str = "Admin@123"
+
     # Database
     database_url: str = "postgresql+asyncpg://dimora:dimora_secret@localhost:5432/dimora_crm"
 

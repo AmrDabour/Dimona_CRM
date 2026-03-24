@@ -1,5 +1,7 @@
 {
-  "app": { "name": "ديمورا CRM" },
+  "app": {
+    "name": "ديمورا CRM"
+  },
   "nav": {
     "dashboard": "لوحة التحكم",
     "leads": "العملاء",
@@ -119,6 +121,9 @@
     "lostReason": "سبب الخسارة",
     "customFields": "حقول مخصصة",
     "requirements": "المتطلبات",
+    "budgetRange": "ميزانية العميل",
+    "budgetMin": "أقل ميزانية",
+    "budgetMax": "أعلى ميزانية",
     "activities": "الأنشطة",
     "pipelineHistory": "سجل المراحل",
     "matchedUnits": "الوحدات المطابقة",
@@ -128,6 +133,7 @@
     "changeStatus": "تغيير الحالة",
     "addNote": "إضافة ملاحظة",
     "sendWhatsApp": "إرسال واتساب",
+    "notes": "ملاحظات",
     "importLeads": "استيراد العملاء",
     "exportLeads": "تصدير العملاء",
     "statuses": {
@@ -232,13 +238,13 @@
     "markComplete": "تعليم كمكتمل",
     "syncCalendar": "مزامنة مع التقويم",
     "types": {
-      "CALL": "مكالمة",
-      "MEETING": "اجتماع",
-      "NOTE": "ملاحظة",
-      "WHATSAPP": "واتساب",
-      "EMAIL": "بريد إلكتروني",
-      "VIEWING": "معاينة",
-      "FOLLOW_UP": "متابعة"
+      "call": "مكالمة",
+      "meeting": "اجتماع",
+      "note": "ملاحظة",
+      "whatsapp": "واتساب",
+      "email": "بريد إلكتروني",
+      "viewing": "معاينة",
+      "follow_up": "متابعة"
     }
   },
   "reports": {
@@ -254,7 +260,11 @@
     "conversionRate": "معدل التحويل",
     "costPerLead": "تكلفة العميل",
     "costPerWon": "تكلفة الصفقة",
-    "campaignCost": "تكلفة الحملة"
+    "campaignCost": "تكلفة الحملة",
+    "pointsSummary": "ملخص النقاط",
+    "showDetails": "عرض التفاصيل",
+    "hideDetails": "إخفاء التفاصيل",
+    "pointHistory": "سجل النقاط"
   },
   "admin": {
     "users": "إدارة المستخدمين",
@@ -320,6 +330,46 @@
     "runComplianceCheck": "تشغيل فحص الالتزام",
     "complianceCheckDone": "اكتمل فحص الالتزام",
     "agentsChecked": "مندوب تم فحصه",
-    "awarded": "تم منح النقاط"
+    "awarded": "تم منح النقاط",
+    "events": {
+      "call_logged": "تسجيل مكالمة",
+      "inventory_added": "إضافة وحدة مخزون",
+      "lead_profile_complete": "إكمال ملف العميل",
+      "negotiation_reached": "الوصول لمرحلة التفاوض",
+      "no_overdue_weekly": "عدم وجود مهام متأخرة (أسبوعياً)",
+      "rent_won": "صفقة إيجار ناجحة",
+      "sale_won": "صفقة بيع ناجحة",
+      "viewing_completed": "إتمام معاينة",
+      "viewing_scheduled": "جدولة معاينة",
+      "lost_no_reason": "خسارة عميل بدون سبب",
+      "missed_meeting": "فوات موعد / اجتماع",
+      "slow_response": "استجابة بطيئة (>60 دقيقة)"
+    },
+    "categories": {
+      "Activity": "نشاط",
+      "Compliance": "التزام",
+      "Conversion": "تحويل"
+    },
+    "descriptions": {
+      "call_logged": "تم تسجيل مكالمة هاتفية (> 1 دقيقة)",
+      "inventory_added": "تم إضافة وحدة جديدة بكامل التفاصيل",
+      "lead_profile_complete": "ملف العميل مكتمل (الاسم، الميزانية، المنطقة، التفضيلات)",
+      "negotiation_reached": "تحرك العميل لمرحلة التفاوض",
+      "no_overdue_weekly": "صفر مهام متأخرة طوال الأسبوع",
+      "rent_won": "تم إغلاق صفقة إيجار (فوز)",
+      "sale_won": "تم إغلاق صفقة بيع (فوز)",
+      "viewing_completed": "تم إتمام معاينة للعقار في الموقع",
+      "viewing_scheduled": "تم جدولة معاينة للعقار",
+      "lost_no_reason": "تم تعليم العميل كخسارة بدون إبداء سبب واضح",
+      "missed_meeting": "فوات موعد معاينة أو اجتماع مجدول بدون إشعار مسبق",
+      "slow_response": "الرد على عميل جديد بعد أكثر من 60 دقيقة"
+    },
+    "pointsBreakdown": "تفاصيل ومصادر النقاط",
+    "howToEarn": "كيفية اكتساب النقاط",
+    "history": "سجل العمليات",
+    "noRules": "لا توجد قواعد مكونة حاليا.",
+    "noHistory": "لا يوجد سجل نقاط متاح لهذا الشهر.",
+    "pointsPerEvent": "نقاط",
+    "minutes": "دقيقة"
   }
 }

@@ -63,6 +63,25 @@ export function useAgentPoints(agentId: string, month?: string) {
   });
 }
 
+export function useAgentPointHistory(
+  agentId: string,
+  month?: string,
+  page = 1,
+  pageSize = 50,
+) {
+  return useQuery({
+    queryKey: [GAMIFICATION_KEY, "agent-history", agentId, month, page, pageSize],
+    queryFn: () =>
+      api
+        .get<PointTransactionPage>(
+          `/gamification/agent/${agentId}/points/history`,
+          { params: { month, page, page_size: pageSize } },
+        )
+        .then((r) => r.data),
+    enabled: !!agentId,
+  });
+}
+
 export function usePointRules() {
   return useQuery({
     queryKey: [GAMIFICATION_KEY, "rules"],

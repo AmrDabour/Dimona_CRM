@@ -138,6 +138,7 @@ class LeadService:
             source_id=lead_data.source_id,
             assigned_to=assigned_to,
             custom_fields=lead_data.custom_fields,
+            notes=lead_data.notes,
             status=LeadStatus.NEW,
         )
 
@@ -222,6 +223,8 @@ class LeadService:
             lead.whatsapp_number = lead_data.whatsapp_number
         if lead_data.custom_fields is not None:
             lead.custom_fields = lead_data.custom_fields
+        if lead_data.notes is not None:
+            lead.notes = lead_data.notes
 
         await self.db.commit()
         return await self.get_lead_by_id(lead_id, current_user, include_relations=True)

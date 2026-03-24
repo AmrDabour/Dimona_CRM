@@ -18,35 +18,33 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown, Phone, User, Calendar } from "lucide-react";
 
 const STAGES: LeadStatus[] = [
-  "NEW",
-  "CONTACTED",
-  "VIEWING_SCHEDULED",
-  "VIEWING_DONE",
-  "NEGOTIATION",
-  "WON",
-  "LOST",
+  "new",
+  "contacted",
+  "viewing",
+  "negotiation",
+  "won",
+  "lost",
 ];
 
 const STAGE_COLORS: Record<LeadStatus, { bg: string; border: string; dot: string }> = {
-  NEW:               { bg: "bg-blue-50 dark:bg-blue-950/30",   border: "border-blue-300 dark:border-blue-700",   dot: "bg-blue-500" },
-  CONTACTED:         { bg: "bg-yellow-50 dark:bg-yellow-950/30", border: "border-yellow-300 dark:border-yellow-700", dot: "bg-yellow-500" },
-  VIEWING_SCHEDULED: { bg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-300 dark:border-purple-700", dot: "bg-purple-500" },
-  VIEWING_DONE:      { bg: "bg-indigo-50 dark:bg-indigo-950/30", border: "border-indigo-300 dark:border-indigo-700", dot: "bg-indigo-500" },
-  NEGOTIATION:       { bg: "bg-orange-50 dark:bg-orange-950/30", border: "border-orange-300 dark:border-orange-700", dot: "bg-orange-500" },
-  WON:               { bg: "bg-green-50 dark:bg-green-950/30",  border: "border-green-300 dark:border-green-700",  dot: "bg-green-500" },
-  LOST:              { bg: "bg-red-50 dark:bg-red-950/30",     border: "border-red-300 dark:border-red-700",     dot: "bg-red-500" },
-  UNQUALIFIED:       { bg: "bg-gray-50 dark:bg-gray-950/30",   border: "border-gray-300 dark:border-gray-700",   dot: "bg-gray-500" },
+  new:         { bg: "bg-blue-50 dark:bg-blue-950/30",   border: "border-blue-300 dark:border-blue-700",   dot: "bg-blue-500" },
+  contacted:   { bg: "bg-yellow-50 dark:bg-yellow-950/30", border: "border-yellow-300 dark:border-yellow-700", dot: "bg-yellow-500" },
+  viewing:     { bg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-300 dark:border-purple-700", dot: "bg-purple-500" },
+  negotiation: { bg: "bg-orange-50 dark:bg-orange-950/30", border: "border-orange-300 dark:border-orange-700", dot: "bg-orange-500" },
+  won:         { bg: "bg-green-50 dark:bg-green-950/30",  border: "border-green-300 dark:border-green-700",  dot: "bg-green-500" },
+  lost:        { bg: "bg-red-50 dark:bg-red-950/30",     border: "border-red-300 dark:border-red-700",     dot: "bg-red-500" },
 };
 
 function StageColumn({ status }: { status: LeadStatus }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: leads, isLoading } = useLeadsByStage(status);
+  const { data: leadsData, isLoading } = useLeadsByStage(status);
+  const leads = leadsData?.items || [];
   const { data: stats } = usePipelineStats();
   const updateStatus = useUpdateLeadStatus();
 
   const colors = STAGE_COLORS[status];
-  const count = stats?.[status] ?? leads?.length ?? 0;
+  const count = stats?.stages.find((s) => s.stage === status)?.count ?? leads?.length ?? 0;
 
   function handleStatusChange(lead: Lead, newStatus: LeadStatus) {
     if (newStatus === lead.status) return;
