@@ -2,6 +2,10 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTeamActivities } from "@/services/teamActivityService";
+import {
+  useManagerTaskSchedules,
+  useCancelManagerTaskSchedule,
+} from "@/services/activityService";
 import { usePermissions } from "@/hooks/usePermissions";
 import { AssignTaskDialog } from "@/components/tasks/AssignTaskDialog";
 import { formatDateTime } from "@/lib/utils";
@@ -19,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 export default function TeamTasksPage() {
   const { t } = useTranslation();
@@ -34,6 +39,23 @@ export default function TeamTasksPage() {
     onlyToday,
     overdueOnly,
   });
+
+  const canManageSchedules = permissions.isAdmin || permissions.isManager;
+  const { data: schedules, isLoading: schedulesLoading } = useManagerTaskSchedules(
+    canManageSchedules,
+  );
+  const cancelSchedule = useCancelManagerTaskSchedule();
+
+  const formatScheduleWeekdays = (days: number[]) => {
+    const keys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+    return [...days]
+      .sort((a, b) => a - b)
+      .map((d) => t(`activities.weekdays.${keys[d]}`))
+      .join(" · ");
+  };
+
+  const formatScheduleTimeUtc = (h: number, m: number) =>
+    `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} UTC`;
 
   return (
     <div className="space-y-6 p-6">
@@ -89,6 +111,78 @@ export default function TeamTasksPage() {
           </Label>
         </div>
       </div>
+
+      {canManageSchedules && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("teamTasks.recurringTitle")}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t("teamTasks.recurringSubtitle")}</p>
+          </CardHeader>
+          <CardContent>
+            {schedulesLoading && (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            )}
+            {!schedulesLoading && (!schedules || schedules.length === 0) && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                {t("teamTasks.recurringEmpty")}
+              </p>
+            )}
+            {!schedulesLoading && schedules && schedules.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t("leads.assignedTo", "Assignee")}</TableHead>
+                    <TableHead>{t("teamTasks.type")}</TableHead>
+                    <TableHead>{t("teamTasks.recurringPoints")}</TableHead>
+                    <TableHead>{t("teamTasks.recurringDays")}</TableHead>
+                    <TableHead>{t("teamTasks.recurringTime")}</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {schedules.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.assignee_name}</TableCell>
+                      <TableCell>
+                        <span className="capitalize">
+                          {t(`activities.types.${s.activity_type}`, s.activity_type)}
+                        </span>
+                      </TableCell>
+                      <TableCell>{s.task_points}</TableCell>
+                      <TableCell className="max-w-[200px] text-sm">
+                        {formatScheduleWeekdays(s.weekdays)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-sm">
+                        {formatScheduleTimeUtc(s.schedule_hour_utc, s.schedule_minute_utc)}
+                      </TableCell>
+                      <TableCell className="text-end">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          disabled={cancelSchedule.isPending}
+                          onClick={async () => {
+                            try {
+                              await cancelSchedule.mutateAsync(s.id);
+                              toast.success(t("teamTasks.recurringCancelled"));
+                            } catch {
+                              toast.error(t("common.error"));
+                            }
+                          }}
+                        >
+                          {t("teamTasks.recurringCancel")}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

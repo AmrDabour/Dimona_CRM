@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated, List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,8 @@ from app.schemas.activity import (
     ActivityUpdate,
     ActivityResponse,
     ManagerTaskAssign,
+    ManagerTaskAssignResult,
+    ManagerTaskScheduleResponse,
 )
 from app.schemas.common import PaginatedResponse, MessageResponse
 
@@ -65,7 +67,7 @@ async def create_activity(
 activity_router = APIRouter(prefix="/activities", tags=["Activities"])
 
 
-@activity_router.post("/assign", response_model=ActivityResponse)
+@activity_router.post("/assign", response_model=ManagerTaskAssignResult)
 async def assign_manager_task(
     body: ManagerTaskAssign,
     current_user: Annotated[
@@ -76,6 +78,36 @@ async def assign_manager_task(
     """Assign a task/activity to an agent (optional lead). Sends in-app notification."""
     activity_service = ActivityService(db)
     return await activity_service.assign_task_from_manager(body, current_user)
+
+
+@activity_router.get(
+    "/manager-schedules",
+    response_model=List[ManagerTaskScheduleResponse],
+)
+async def list_manager_task_schedules(
+    current_user: Annotated[
+        User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    activity_service = ActivityService(db)
+    return await activity_service.list_manager_task_schedules(current_user)
+
+
+@activity_router.post(
+    "/manager-schedules/{schedule_id}/cancel",
+    response_model=MessageResponse,
+)
+async def cancel_manager_task_schedule(
+    schedule_id: UUID,
+    current_user: Annotated[
+        User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    activity_service = ActivityService(db)
+    await activity_service.cancel_manager_task_schedule(schedule_id, current_user)
+    return MessageResponse(message="Schedule cancelled")
 
 
 @activity_router.get("/{activity_id}", response_model=ActivityResponse)

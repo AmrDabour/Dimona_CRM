@@ -1,7 +1,7 @@
 import uuid
 from enum import Enum
 from datetime import datetime
-from sqlalchemy import String, Text, Boolean, Enum as SQLEnum, ForeignKey, DateTime
+from sqlalchemy import String, Text, Boolean, Integer, Enum as SQLEnum, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -57,6 +57,13 @@ class Activity(Base, TimestampMixin):
     )
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     google_calendar_event_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    manager_schedule_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("manager_task_schedules.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    task_bonus_points: Mapped[int] = mapped_column(Integer, server_default="0", nullable=False)
 
     # Relationships
     lead: Mapped["Lead"] = relationship(
@@ -72,4 +79,9 @@ class Activity(Base, TimestampMixin):
         "User",
         back_populates="assigned_tasks",
         foreign_keys="Activity.assigned_by_id",
+    )
+    manager_schedule: Mapped["ManagerTaskSchedule | None"] = relationship(
+        "ManagerTaskSchedule",
+        back_populates="activities",
+        foreign_keys="Activity.manager_schedule_id",
     )

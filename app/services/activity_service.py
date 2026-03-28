@@ -1,6 +1,6 @@
 from uuid import UUID
-from typing import Optional, List, Tuple
-from datetime import datetime, timezone
+from typing import List, Optional, Tuple
+from datetime import date, datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, nulls_last
 from sqlalchemy.orm import selectinload
@@ -8,9 +8,17 @@ from sqlalchemy.orm import selectinload
 from app.models.activity import Activity, ActivityType
 from app.models.lead import Lead
 from app.models.user import User
+from app.models.manager_task_schedule import ManagerTaskSchedule
 from app.core.exceptions import NotFoundException, BadRequestException, PermissionDeniedException
 from app.core.permissions import UserRole
-from app.schemas.activity import ActivityCreate, ActivityUpdate, ManagerTaskAssign
+from app.schemas.activity import (
+    ActivityCreate,
+    ActivityUpdate,
+    ManagerTaskAssign,
+    ManagerTaskAssignResult,
+    ManagerTaskScheduleResponse,
+    ActivityResponse,
+)
 from app.services.gamification_service import GamificationService
 from app.services.lead_access import can_access_lead as lead_can_access
 from app.services.notification_service import NotificationService
@@ -148,11 +156,86 @@ class ActivityService:
 
         return await self.get_activity_by_id(new_activity.id, current_user)
 
+    async def _lead_display_name(self, lead_id: Optional[UUID]) -> Optional[str]:
+        if lead_id is None:
+            return None
+        row = await self.db.execute(select(Lead.full_name).where(Lead.id == lead_id))
+        return row.scalar_one_or_none()
+
+    async def _finalize_manager_task_delivery(
+        self,
+        activity: Activity,
+        assignee: User,
+        assigner: User,
+        lead_name: Optional[str],
+    ) -> None:
+        if activity.task_bonus_points and activity.task_bonus_points > 0:
+            await self._gamification.award_adjustment_points(
+                assignee.id,
+                activity.task_bonus_points,
+                reference_id=activity.id,
+                reference_type="activity",
+                note="Task assignment bonus",
+            )
+            await self.db.commit()
+            await self.db.refresh(activity)
+        ns = NotificationService(self.db)
+        await ns.notify_manager_task_assigned(
+            assignee=assignee,
+            activity=activity,
+            assigner_name=assigner.full_name,
+            lead_name=lead_name,
+        )
+
+    async def _spawn_from_schedule(
+        self, schedule: ManagerTaskSchedule, fire_date: date
+    ) -> Optional[Activity]:
+        if schedule.last_fired_on == fire_date:
+            return None
+        r = await self.db.execute(
+            select(User).where(User.id == schedule.assignee_id, User.is_deleted.is_(False))
+        )
+        assignee = r.scalar_one_or_none()
+        r2 = await self.db.execute(
+            select(User).where(User.id == schedule.assigned_by_id, User.is_deleted.is_(False))
+        )
+        assigner = r2.scalar_one_or_none()
+        if not assignee or not assigner or not assignee.is_active:
+            return None
+
+        atype = ActivityType(schedule.activity_type)
+        act = Activity(
+            lead_id=schedule.lead_id,
+            user_id=schedule.assignee_id,
+            assigned_by_id=schedule.assigned_by_id,
+            type=atype,
+            description=schedule.description,
+            scheduled_at=schedule.due_at_utc(fire_date),
+            call_recording_url=None,
+            is_completed=False,
+            manager_schedule_id=schedule.id,
+            task_bonus_points=schedule.task_points,
+        )
+        self.db.add(act)
+        schedule.last_fired_on = fire_date
+        await self.db.commit()
+        await self.db.refresh(act)
+        await self.db.refresh(schedule)
+        lead_name = await self._lead_display_name(schedule.lead_id)
+        await self._finalize_manager_task_delivery(act, assignee, assigner, lead_name)
+        return act
+
+    @staticmethod
+    def _schedule_clock_utc(data: ManagerTaskAssign) -> Tuple[int, int]:
+        if data.scheduled_at:
+            return data.scheduled_at.hour, data.scheduled_at.minute
+        return 9, 0
+
     async def assign_task_from_manager(
         self,
         data: ManagerTaskAssign,
         current_user: User,
-    ) -> Activity:
+    ) -> ManagerTaskAssignResult:
         if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
             raise PermissionDeniedException("Only admins and managers can assign tasks")
 
@@ -178,6 +261,41 @@ class ActivityService:
         if lead_id is not None:
             await self._verify_lead_access(lead_id, current_user)
 
+        hour_utc, minute_utc = self._schedule_clock_utc(data)
+
+        if data.recurrence == "weekly":
+            ws = sorted(set(data.weekdays or []))
+            sched = ManagerTaskSchedule(
+                assignee_id=data.assignee_id,
+                assigned_by_id=current_user.id,
+                lead_id=lead_id,
+                activity_type=data.type.value,
+                description=data.description,
+                task_points=data.task_points,
+                weekdays=ws,
+                schedule_hour_utc=hour_utc,
+                schedule_minute_utc=minute_utc,
+                is_active=True,
+                last_fired_on=None,
+            )
+            self.db.add(sched)
+            await self.db.commit()
+            await self.db.refresh(sched)
+
+            today = datetime.now(timezone.utc).date()
+            if today.weekday() in ws:
+                act = await self._spawn_from_schedule(sched, today)
+                if act:
+                    full = await self.get_activity_by_id(act.id, current_user)
+                    return ManagerTaskAssignResult(
+                        activity=ActivityResponse.model_validate(full),
+                        schedule_id=sched.id,
+                    )
+            return ManagerTaskAssignResult(
+                schedule_id=sched.id,
+                detail="weekly_schedule_active",
+            )
+
         new_activity = Activity(
             lead_id=lead_id,
             user_id=data.assignee_id,
@@ -187,27 +305,96 @@ class ActivityService:
             scheduled_at=data.scheduled_at,
             call_recording_url=None,
             is_completed=False,
+            task_bonus_points=data.task_points,
         )
 
         self.db.add(new_activity)
         await self.db.commit()
         await self.db.refresh(new_activity)
 
-        lead_name: str | None = None
-        if lead_id is not None:
-            lr = await self.db.execute(select(Lead).where(Lead.id == lead_id))
-            ld = lr.scalar_one_or_none()
-            lead_name = ld.full_name if ld else None
-
-        ns = NotificationService(self.db)
-        await ns.notify_manager_task_assigned(
-            assignee=assignee,
-            activity=new_activity,
-            assigner_name=current_user.full_name,
-            lead_name=lead_name,
+        lead_name = await self._lead_display_name(lead_id)
+        await self._finalize_manager_task_delivery(
+            new_activity, assignee, current_user, lead_name
         )
 
-        return await self.get_activity_by_id(new_activity.id, current_user)
+        full = await self.get_activity_by_id(new_activity.id, current_user)
+        return ManagerTaskAssignResult(activity=ActivityResponse.model_validate(full))
+
+    async def list_manager_task_schedules(
+        self, current_user: User
+    ) -> List[ManagerTaskScheduleResponse]:
+        if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
+            raise PermissionDeniedException("Not allowed")
+
+        q = (
+            select(ManagerTaskSchedule)
+            .where(ManagerTaskSchedule.is_active.is_(True))
+            .options(selectinload(ManagerTaskSchedule.assignee))
+            .order_by(ManagerTaskSchedule.created_at.desc())
+        )
+        if current_user.role == UserRole.MANAGER:
+            q = q.where(ManagerTaskSchedule.assigned_by_id == current_user.id)
+
+        res = await self.db.execute(q)
+        rows = res.scalars().all()
+        out: List[ManagerTaskScheduleResponse] = []
+        for s in rows:
+            an = s.assignee.full_name if s.assignee else ""
+            out.append(
+                ManagerTaskScheduleResponse(
+                    id=s.id,
+                    assignee_id=s.assignee_id,
+                    assignee_name=an,
+                    assigned_by_id=s.assigned_by_id,
+                    lead_id=s.lead_id,
+                    activity_type=ActivityType(s.activity_type),
+                    description=s.description,
+                    task_points=s.task_points,
+                    weekdays=list(s.weekdays or []),
+                    schedule_hour_utc=s.schedule_hour_utc,
+                    schedule_minute_utc=s.schedule_minute_utc,
+                    is_active=s.is_active,
+                    last_fired_on=s.last_fired_on,
+                )
+            )
+        return out
+
+    async def cancel_manager_task_schedule(
+        self, schedule_id: UUID, current_user: User
+    ) -> None:
+        if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
+            raise PermissionDeniedException("Not allowed")
+        s = await self.db.get(ManagerTaskSchedule, schedule_id)
+        if not s:
+            raise NotFoundException("Schedule")
+        if (
+            current_user.role == UserRole.MANAGER
+            and s.assigned_by_id != current_user.id
+        ):
+            raise PermissionDeniedException("You can only cancel your own schedules")
+        s.is_active = False
+        await self.db.commit()
+
+    async def run_daily_manager_schedules(self) -> int:
+        """Create one activity per active schedule when weekday matches (UTC)."""
+        today = datetime.now(timezone.utc).date()
+        wd = today.weekday()
+        res = await self.db.execute(
+            select(ManagerTaskSchedule)
+            .where(ManagerTaskSchedule.is_active.is_(True))
+            .options(
+                selectinload(ManagerTaskSchedule.assignee),
+                selectinload(ManagerTaskSchedule.assigned_by),
+            )
+        )
+        created = 0
+        for s in res.scalars().all():
+            if wd not in (s.weekdays or []):
+                continue
+            act = await self._spawn_from_schedule(s, today)
+            if act:
+                created += 1
+        return created
 
     async def update_activity(
         self,

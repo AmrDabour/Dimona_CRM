@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTranslation } from "react-i18next";
@@ -13,6 +13,7 @@ import { useLeads } from "@/services/leadService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -37,15 +38,44 @@ const ASSIGN_TYPES = [
   "email",
 ] as const;
 
+/** Python weekday: 0=Mon … 6=Sun (matches backend UTC weekday). */
+const WEEKDAYS_PY = [
+  { v: 0, k: "mon" },
+  { v: 1, k: "tue" },
+  { v: 2, k: "wed" },
+  { v: 3, k: "thu" },
+  { v: 4, k: "fri" },
+  { v: 5, k: "sat" },
+  { v: 6, k: "sun" },
+] as const;
+
 function buildSchema(t: (k: string) => string) {
-  return z.object({
-    assignee_id: z.string().min(1, t("activities.assignTaskAssigneeRequired")),
-    type: z.enum(ASSIGN_TYPES),
-    /** "__none__" or a lead UUID when choosing from the optional client field */
-    selected_lead_id: z.string().optional(),
-    description: z.string().optional(),
-    scheduled_at: z.string().optional(),
-  });
+  return z
+    .object({
+      assignee_id: z.string().min(1, t("activities.assignTaskAssigneeRequired")),
+      type: z.enum(ASSIGN_TYPES),
+      /** "__none__" or a lead UUID when choosing from the optional client field */
+      selected_lead_id: z.string().optional(),
+      description: z.string().optional(),
+      scheduled_at: z.string().optional(),
+      task_points: z.preprocess(
+        (val) => (val === "" || val == null ? 0 : val),
+        z.coerce.number().min(0).max(500),
+      ),
+      recurrence: z.enum(["once", "weekly"]),
+      weekdays: z.array(z.number().int().min(0).max(6)).default([]),
+    })
+    .superRefine((data, ctx) => {
+      if (data.recurrence !== "weekly") return;
+      const w = data.weekdays ?? [];
+      if (w.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: t("activities.assignTaskWeekdaysRequired"),
+          path: ["weekdays"],
+        });
+      }
+    });
 }
 
 type FormValues = z.infer<ReturnType<typeof buildSchema>>;
@@ -55,6 +85,13 @@ interface AssignTaskDialogProps {
   onOpenChange: (open: boolean) => void;
   /** When set, task is tied to this lead */
   leadId?: string;
+}
+
+function toggleWeekday(current: number[], day: number): number[] {
+  if (current.includes(day)) {
+    return current.filter((d) => d !== day);
+  }
+  return [...current, day].sort((a, b) => a - b);
 }
 
 export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialogProps) {
@@ -75,6 +112,7 @@ export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialo
     handleSubmit,
     control,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -84,8 +122,13 @@ export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialo
       selected_lead_id: "__none__",
       description: "",
       scheduled_at: "",
+      task_points: 0,
+      recurrence: "once",
+      weekdays: [],
     },
   });
+
+  const recurrence = useWatch({ control, name: "recurrence" });
 
   useEffect(() => {
     if (open) {
@@ -95,6 +138,9 @@ export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialo
         selected_lead_id: "__none__",
         description: "",
         scheduled_at: "",
+        task_points: 0,
+        recurrence: "once",
+        weekdays: [],
       });
     }
   }, [open, reset]);
@@ -105,10 +151,7 @@ export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialo
       if (!u.is_active || u.id === currentUser.id) return false;
       if (u.role !== "agent") return false;
       if (currentUser.role === "manager") {
-        return (
-          !!currentUser.team_id &&
-          u.team_id === currentUser.team_id
-        );
+        return !!currentUser.team_id && u.team_id === currentUser.team_id;
       }
       return currentUser.role === "admin";
     });
@@ -130,14 +173,24 @@ export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialo
           ? values.selected_lead_id
           : undefined);
 
-      await assignMutation.mutateAsync({
+      const result = await assignMutation.mutateAsync({
         assignee_id: values.assignee_id,
         type: values.type,
         description: values.description?.trim() || undefined,
         scheduled_at: scheduledAt,
         lead_id: resolvedLeadId,
+        task_points: values.task_points,
+        recurrence: values.recurrence,
+        weekdays: values.recurrence === "weekly" ? values.weekdays : undefined,
       });
-      toast.success(t("activities.assignTaskSuccess"));
+
+      if (result.schedule_id && result.activity) {
+        toast.success(t("activities.assignTaskSuccessRecurringFirst"));
+      } else if (result.schedule_id) {
+        toast.success(t("activities.assignTaskWeeklyCreated"));
+      } else {
+        toast.success(t("activities.assignTaskSuccess"));
+      }
       reset();
       onOpenChange(false);
     } catch {
@@ -153,7 +206,7 @@ export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialo
         onOpenChange(o);
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("activities.assignTask")}</DialogTitle>
         </DialogHeader>
@@ -238,6 +291,72 @@ export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialo
           </div>
 
           <div className="space-y-2">
+            <Label>{t("activities.assignTaskPoints")}</Label>
+            <Input type="number" min={0} max={500} step={1} {...register("task_points")} />
+            <p className="text-xs text-muted-foreground">{t("activities.assignTaskPointsHint")}</p>
+            {errors.task_points && (
+              <p className="text-xs text-destructive">{errors.task_points.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>{t("activities.assignTaskRecurrence")}</Label>
+            <Controller
+              control={control}
+              name="recurrence"
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(v) => {
+                    field.onChange(v);
+                    if (v === "once") setValue("weekdays", []);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="once">{t("activities.assignTaskOnce")}</SelectItem>
+                    <SelectItem value="weekly">{t("activities.assignTaskWeekly")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            <p className="text-xs text-muted-foreground">{t("activities.assignTaskRecurrenceHint")}</p>
+          </div>
+
+          {recurrence === "weekly" && (
+            <div className="space-y-2">
+              <Label>{t("activities.assignTaskWeekdays")}</Label>
+              <Controller
+                control={control}
+                name="weekdays"
+                render={({ field }) => (
+                  <div className="flex flex-wrap gap-3">
+                    {WEEKDAYS_PY.map(({ v, k }) => (
+                      <label
+                        key={v}
+                        className="flex cursor-pointer items-center gap-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={(field.value ?? []).includes(v)}
+                          onCheckedChange={() =>
+                            field.onChange(toggleWeekday(field.value ?? [], v))
+                          }
+                        />
+                        <span>{t(`activities.weekdays.${k}`)}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              />
+              {errors.weekdays && (
+                <p className="text-xs text-destructive">{errors.weekdays.message}</p>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2">
             <Label>{t("activities.descriptionOptional")}</Label>
             <textarea
               rows={3}
@@ -251,6 +370,7 @@ export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialo
           <div className="space-y-2">
             <Label>{t("activities.scheduledOptional")}</Label>
             <Input type="datetime-local" {...register("scheduled_at")} />
+            <p className="text-xs text-muted-foreground">{t("activities.assignTaskDueHint")}</p>
           </div>
 
           <DialogFooter>

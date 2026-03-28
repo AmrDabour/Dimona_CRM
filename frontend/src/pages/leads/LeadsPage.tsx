@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
@@ -11,7 +11,6 @@ import {
   MoreHorizontal,
   Pencil,
   Trash2,
-  Download,
   Upload,
   Loader2,
 } from "lucide-react";
@@ -25,7 +24,6 @@ import {
   useUpdateLead,
   useDeleteLead,
   exportLeadsCsv,
-  useImportLeads,
 } from "@/services/leadService";
 import { useUsers } from "@/services/userService";
 import type { Lead, LeadStatus } from "@/types/lead";
@@ -144,8 +142,6 @@ export default function LeadsPage() {
   const createLead = useCreateLead();
   const updateLead = useUpdateLead();
   const deleteLead = useDeleteLead();
-  const importLeads = useImportLeads();
-  const importFileRef = useRef<HTMLInputElement>(null);
   const [exporting, setExporting] = useState(false);
 
   const handleExport = async () => {
@@ -162,29 +158,6 @@ export default function LeadsPage() {
     } finally {
       setExporting(false);
     }
-  };
-
-  const handleImportPick = () => importFileRef.current?.click();
-
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    importLeads.mutate(file, {
-      onSuccess: (data) => {
-        if (data.failed === 0) {
-          toast.success(t("leads.importSuccess", { count: data.created }));
-        } else {
-          toast.warning(
-            t("leads.importPartial", {
-              created: data.created,
-              failed: data.failed,
-            }),
-          );
-        }
-      },
-      onError: () => toast.error(t("common.error")),
-    });
   };
 
   // Form
@@ -378,14 +351,6 @@ export default function LeadsPage() {
         </h1>
 
         <div className="flex items-center gap-2">
-          <input
-            ref={importFileRef}
-            type="file"
-            accept=".csv,text/csv"
-            className="hidden"
-            aria-hidden
-            onChange={handleImportFile}
-          />
           {permissions.canExportLeads && (
             <Button
               variant="outline"
@@ -396,24 +361,9 @@ export default function LeadsPage() {
               {exporting ? (
                 <Loader2 className="me-2 h-4 w-4 animate-spin" />
               ) : (
-                <Download className="me-2 h-4 w-4" />
-              )}
-              {t("common.export")}
-            </Button>
-          )}
-          {permissions.canImportLeads && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={importLeads.isPending}
-              onClick={handleImportPick}
-            >
-              {importLeads.isPending ? (
-                <Loader2 className="me-2 h-4 w-4 animate-spin" />
-              ) : (
                 <Upload className="me-2 h-4 w-4" />
               )}
-              {t("common.import")}
+              {t("common.export")}
             </Button>
           )}
           <Button size="sm" onClick={openCreate}>

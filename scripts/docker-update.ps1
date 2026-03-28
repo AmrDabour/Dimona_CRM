@@ -19,5 +19,11 @@ Write-Host "Starting / recreating containers..." -ForegroundColor Cyan
 docker compose -f $ComposeFile up -d --force-recreate
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+Write-Host "Running database migrations (alembic upgrade head) on api..." -ForegroundColor Cyan
+docker compose -f $ComposeFile exec -T api alembic upgrade head
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Migration failed. Run manually: docker compose -f $ComposeFile exec api alembic upgrade head" -ForegroundColor Yellow
+}
+
 Write-Host "Status:" -ForegroundColor Green
 docker compose -f $ComposeFile ps

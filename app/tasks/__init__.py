@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from app.config import settings
 
@@ -38,5 +39,9 @@ celery_app.conf.beat_schedule = {
     "daily-report": {
         "task": "app.tasks.report_tasks.generate_daily_report",
         "schedule": 86400.0,
+    },
+    "run-daily-manager-task-schedules": {
+        "task": "app.tasks.notification_tasks.run_daily_manager_task_schedules",
+        "schedule": crontab(hour=0, minute=5),
     },
 }

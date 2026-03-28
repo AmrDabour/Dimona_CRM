@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import type { Activity, ActivityCreate, ManagerTaskAssignPayload } from "@/types/activity";
+import type {
+  Activity,
+  ActivityCreate,
+  ManagerTaskAssignPayload,
+  ManagerTaskAssignResult,
+  ManagerTaskSchedule,
+} from "@/types/activity";
 import type { PaginatedResponse } from "@/types/common";
 
 function getItems<T>(data: T[] | PaginatedResponse<T> | { items: T[] }): T[] {
@@ -31,17 +37,46 @@ export function useAssignManagerTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: ManagerTaskAssignPayload) =>
-      api.post<Activity>("/activities/assign", {
-        assignee_id: body.assignee_id,
-        type: body.type,
-        description: body.description,
-        scheduled_at: body.scheduled_at,
-        lead_id: body.lead_id || undefined,
-      }).then((r) => r.data),
+      api
+        .post<ManagerTaskAssignResult>("/activities/assign", {
+          assignee_id: body.assignee_id,
+          type: body.type,
+          description: body.description,
+          scheduled_at: body.scheduled_at,
+          lead_id: body.lead_id || undefined,
+          task_points: body.task_points ?? 0,
+          recurrence: body.recurrence ?? "once",
+          weekdays:
+            body.recurrence === "weekly" ? body.weekdays : undefined,
+        })
+        .then((r) => r.data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["activities"] });
+      qc.invalidateQueries({ queryKey: ["activities", "manager-schedules"] });
       qc.invalidateQueries({ queryKey: ["notifications"] });
       qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    },
+  });
+}
+
+export function useManagerTaskSchedules(enabled = true) {
+  return useQuery({
+    queryKey: ["activities", "manager-schedules"],
+    queryFn: () =>
+      api
+        .get<ManagerTaskSchedule[]>("/activities/manager-schedules")
+        .then((r) => r.data),
+    enabled,
+  });
+}
+
+export function useCancelManagerTaskSchedule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (scheduleId: string) =>
+      api.post(`/activities/manager-schedules/${scheduleId}/cancel`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["activities", "manager-schedules"] });
     },
   });
 }

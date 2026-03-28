@@ -121,7 +121,15 @@
     "owner": "سجّلها",
     "lead": "العميل",
     "type": "النوع",
-    "viewLead": "عرض العميل"
+    "viewLead": "عرض العميل",
+    "recurringTitle": "مهام متكررة (تكليف مدير)",
+    "recurringSubtitle": "تُنشأ تلقائياً في أيام الأسبوع المحددة (بتوقيت UTC). ألغِ الجدولة من هنا لإيقاف المهام المستقبلية.",
+    "recurringEmpty": "لا توجد جداول متكررة نشطة.",
+    "recurringPoints": "النقاط",
+    "recurringDays": "الأيام (UTC)",
+    "recurringTime": "الوقت",
+    "recurringCancel": "إلغاء الجدولة",
+    "recurringCancelled": "تم إلغاء الجدولة"
   },
   "leads": {
     "title": "العملاء",
@@ -270,6 +278,26 @@
     "assignTaskLeadOptional": "العميل (اختياري)",
     "assignTaskNoLead": "بدون عميل محدد",
     "assignTaskSubmit": "إرسال المهمة",
+    "assignTaskPoints": "نقاط المهمة (مكافأة)",
+    "assignTaskPointsHint": "نقاط إضافية تُمنح عند إرسال المهمة (نظام النقاط).",
+    "assignTaskRecurrence": "التكرار",
+    "assignTaskOnce": "مرة واحدة فقط",
+    "assignTaskWeekly": "تكرار أسبوعي في أيام محددة",
+    "assignTaskRecurrenceHint": "التكرار الأسبوعي يعتمد أيام الأسبوع بتوقيت UTC. الوقت يُؤخذ من موعد الاستحقاق أدناه، أو 09:00 UTC إذا تركته فارغاً.",
+    "assignTaskWeekdays": "التكرار في",
+    "assignTaskWeekdaysRequired": "اختر يوماً واحداً على الأقل.",
+    "assignTaskDueHint": "للمهام المتكررة، هذا يحدد ساعة التنفيذ (UTC) في كل يوم مختار.",
+    "assignTaskWeeklyCreated": "تم حفظ الجدولة. ستُنشأ المهام في الأيام المحددة.",
+    "assignTaskSuccessRecurringFirst": "تم إرسال المهمة وتفعيل الجدولة الأسبوعية.",
+    "weekdays": {
+      "mon": "الإثنين",
+      "tue": "الثلاثاء",
+      "wed": "الأربعاء",
+      "thu": "الخميس",
+      "fri": "الجمعة",
+      "sat": "السبت",
+      "sun": "الأحد"
+    },
     "descriptionOptional": "تعليمات (اختياري)",
     "scheduledOptional": "موعد الاستحقاق (اختياري)",
     "fromManager": "من المدير",
@@ -383,7 +411,9 @@
       "viewing_scheduled": "جدولة معاينة",
       "lost_no_reason": "خسارة عميل بدون سبب",
       "missed_meeting": "فوات موعد / اجتماع",
-      "slow_response": "استجابة بطيئة (>60 دقيقة)"
+      "slow_response": "استجابة بطيئة (>60 دقيقة)",
+      "attendance_present": "حضور (ملف CSV)",
+      "attendance_absent": "غياب (ملف CSV)"
     },
     "categories": {
       "Activity": "نشاط",
@@ -402,7 +432,9 @@
       "viewing_scheduled": "تم جدولة معاينة للعقار",
       "lost_no_reason": "تم تعليم العميل كخسارة بدون إبداء سبب واضح",
       "missed_meeting": "فوات موعد معاينة أو اجتماع مجدول بدون إشعار مسبق",
-      "slow_response": "الرد على عميل جديد بعد أكثر من 60 دقيقة"
+      "slow_response": "الرد على عميل جديد بعد أكثر من 60 دقيقة",
+      "attendance_present": "تسجيل حضور من استيراد ملف الحضور",
+      "attendance_absent": "تسجيل غياب من استيراد ملف الحضور"
     },
     "pointsBreakdown": "تفاصيل ومصادر النقاط",
     "howToEarn": "كيفية اكتساب النقاط",
@@ -410,6 +442,38 @@
     "noRules": "لا توجد قواعد مكونة حاليا.",
     "noHistory": "لا يوجد سجل نقاط متاح لهذا الشهر.",
     "pointsPerEvent": "نقاط",
-    "minutes": "دقيقة"
+    "minutes": "دقيقة",
+    "yes": "نعم",
+    "no": "لا",
+    "attendanceTab": "الحضور (CSV)",
+    "attendanceHint": "الملف يجب أن يحتوي أعمدة الاسم أو name، والحضور أو attendance. حضور: ح، H، y، yes، 1… غياب: غ، G، n، no، 0… الاسم يجب أن يطابق الاسم الكامل للمندوب أو المدير في النظام (المدير يرى فريقه فقط). قيم النقاط من قواعد attendance_present و attendance_absent في تبويب قواعد النقاط.",
+    "sessionDate": "تاريخ الجلسة",
+    "chooseCsv": "ملف CSV",
+    "previewImport": "معاينة",
+    "applyPoints": "تطبيق النقاط",
+    "importResult": "نتيجة الاستيراد",
+    "dryRun": "معاينة فقط",
+    "csvName": "الاسم",
+    "csvAttendance": "الحضور",
+    "status": "الحالة",
+    "message": "ملاحظة",
+    "rowStatus": {
+      "would_apply": "سيتم التطبيق",
+      "present": "حضور (مُطبَّق)",
+      "absent": "غياب (مُطبَّق)",
+      "unknown": "غير صالح / تخطي",
+      "unmatched": "لا يوجد مستخدم",
+      "ambiguous": "اسم مكرر",
+      "skipped_duplicate": "مسجّل مسبقاً لهذا التاريخ"
+    },
+    "rowMessages": {
+      "unrecognized_attendance_value": "قيمة حضور غير معروفة",
+      "no_user_with_this_full_name": "لا يوجد مستخدم بهذا الاسم الكامل",
+      "multiple_users_same_name": "أكثر من مستخدم بنفس الاسم",
+      "already_recorded_for_session_date": "تم تسجيل الحضور لهذا التاريخ مسبقاً",
+      "rule_missing_or_inactive": "قاعدة النقاط غير موجودة أو معطّلة",
+      "present": "حضور",
+      "absent": "غياب"
+    }
   }
 }

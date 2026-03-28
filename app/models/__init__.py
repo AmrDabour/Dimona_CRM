@@ -4,6 +4,7 @@ from app.models.lead import Lead
 from app.models.lead_source import LeadSource
 from app.models.lead_requirement import LeadRequirement
 from app.models.activity import Activity
+from app.models.manager_task_schedule import ManagerTaskSchedule
 from app.models.developer import Developer
 from app.models.project import Project
 from app.models.unit import Unit
@@ -27,6 +28,7 @@ __all__ = [
     "LeadSource",
     "LeadRequirement",
     "Activity",
+    "ManagerTaskSchedule",
     "Developer",
     "Project",
     "Unit",

@@ -174,3 +174,44 @@ export function useRunComplianceCheck() {
       qc.invalidateQueries({ queryKey: [GAMIFICATION_KEY] }),
   });
 }
+
+export type AttendanceImportResponse = {
+  dry_run: boolean;
+  session_date: string;
+  batch_id: string | null;
+  rows: Array<{
+    line: number;
+    raw_name: string;
+    attendance_raw: string;
+    status: string;
+    user_id?: string | null;
+    message?: string | null;
+  }>;
+  summary: Record<string, number>;
+  applied_present: number;
+  applied_absent: number;
+  errors: string[];
+};
+
+export function useAttendanceCsvImport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      file: File;
+      sessionDate: string;
+      dryRun: boolean;
+    }) => {
+      const fd = new FormData();
+      fd.append("file", params.file);
+      fd.append("session_date", params.sessionDate);
+      fd.append("dry_run", params.dryRun ? "true" : "false");
+      const r = await api.post<AttendanceImportResponse>(
+        "/gamification/attendance/import",
+        fd,
+      );
+      return r.data;
+    },
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: [GAMIFICATION_KEY] }),
+  });
+}

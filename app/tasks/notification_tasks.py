@@ -257,3 +257,18 @@ async def _check_stuck_leads():
         for lead in stuck_leads:
             if lead.assigned_user:
                 pass
+
+
+@celery_app.task(name="app.tasks.notification_tasks.run_daily_manager_task_schedules")
+def run_daily_manager_task_schedules():
+    """Spawn manager recurring tasks for matching UTC weekdays (once per day)."""
+    asyncio.run(_run_daily_manager_task_schedules())
+
+
+async def _run_daily_manager_task_schedules():
+    from app.services.activity_service import ActivityService
+
+    async with AsyncSessionLocal() as db:
+        svc = ActivityService(db)
+        n = await svc.run_daily_manager_schedules()
+        logger.info("run_daily_manager_task_schedules: created %s activities", n)

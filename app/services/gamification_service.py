@@ -71,6 +71,37 @@ class GamificationService:
         await self._invalidate_caches(user_id, month)
         return txn
 
+    async def award_adjustment_points(
+        self,
+        user_id: UUID,
+        points: int,
+        *,
+        reference_id: UUID | None = None,
+        reference_type: str | None = None,
+        note: str | None = None,
+    ) -> PointTransaction | None:
+        """Ad-hoc points (e.g. manager task bonus) without a point_rule row."""
+        if points == 0:
+            return None
+        month = _current_month()
+        category = "compliance" if points > 0 else "penalty"
+        txn = PointTransaction(
+            user_id=user_id,
+            rule_id=None,
+            penalty_rule_id=None,
+            points=points,
+            event_type="manager_task_bonus",
+            reference_id=reference_id,
+            reference_type=reference_type,
+            note=note,
+            period_month=month,
+        )
+        self.db.add(txn)
+        await self._upsert_summary(user_id, month, points, category)
+        await self.db.flush()
+        await self._invalidate_caches(user_id, month)
+        return txn
+
     async def apply_penalty(
         self,
         user_id: UUID,

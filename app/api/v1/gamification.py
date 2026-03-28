@@ -2,15 +2,16 @@ from typing import Annotated, Optional
 from uuid import UUID
 from datetime import date, datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_current_user, require_roles
 from app.core.permissions import UserRole
-from app.core.exceptions import NotFoundException, PermissionDeniedException
+from app.core.exceptions import BadRequestException, NotFoundException, PermissionDeniedException
 from app.models.user import User
 from app.services.gamification_service import GamificationService
+from app.services.attendance_import_service import AttendanceImportService
 
 router = APIRouter(prefix="/gamification", tags=["Gamification & Points"])
 
@@ -168,6 +169,54 @@ async def update_tier(
     if not result:
         raise NotFoundException("Tier")
     return result
+
+
+# ── Attendance CSV import ───────────────────────────────────────────
+
+@router.post("/attendance/import")
+async def import_attendance_csv(
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...),
+    session_date: str = Form(..., description="YYYY-MM-DD"),
+    dry_run: str = Form("true"),
+):
+    """Upload CSV with columns الاسم/name and الحضور/attendance; apply point rules."""
+    try:
+        sd = datetime.strptime(session_date.strip(), "%Y-%m-%d").date()
+    except ValueError as e:
+        raise BadRequestException("session_date must be YYYY-MM-DD") from e
+
+    team_id = None
+    if current_user.role == UserRole.MANAGER:
+        if not current_user.team_id:
+            raise BadRequestException("Manager has no team assigned")
+        team_id = current_user.team_id
+
+    raw = await file.read()
+    if not raw:
+        raise BadRequestException("Empty file")
+
+    dry = str(dry_run).strip().lower() in ("true", "1", "yes", "on")
+
+    svc = AttendanceImportService(db)
+    result = await svc.process(
+        csv_bytes=raw,
+        session_date=sd,
+        dry_run=dry,
+        team_id=team_id,
+    )
+
+    if result.errors:
+        await db.rollback()
+        return result.to_dict()
+
+    if not dry:
+        await db.commit()
+    else:
+        await db.rollback()
+
+    return result.to_dict()
 
 
 # ── Compliance job trigger (admin/cron) ─────────────────────────────

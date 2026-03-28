@@ -7,6 +7,8 @@ import {
   useUpdatePenaltyRule,
   useUpdateTier,
   useRunComplianceCheck,
+  useAttendanceCsvImport,
+  type AttendanceImportResponse,
 } from "@/services/gamificationService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Settings2, ShieldCheck, Trophy, Play } from "lucide-react";
+import { Settings2, ShieldCheck, Trophy, Play, FileSpreadsheet } from "lucide-react";
 import type { PointRule, PenaltyRule, TierConfig } from "@/types/gamification";
 
 function PointRulesTab() {
@@ -207,6 +209,156 @@ function PointRulesTab() {
   );
 }
 
+function AttendanceCsvTab() {
+  const { t } = useTranslation();
+  const importMut = useAttendanceCsvImport();
+  const [sessionDate, setSessionDate] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
+  const [file, setFile] = useState<File | null>(null);
+  const [result, setResult] = useState<AttendanceImportResponse | null>(null);
+
+  const runImport = (dryRun: boolean) => {
+    if (!file) return;
+    importMut.mutate(
+      { file, sessionDate, dryRun },
+      {
+        onSuccess: (data) => setResult(data),
+      },
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            {t("gamification.attendanceTab")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-muted-foreground text-sm">
+            {t("gamification.attendanceHint")}
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                {t("gamification.sessionDate")}
+              </label>
+              <Input
+                type="date"
+                value={sessionDate}
+                onChange={(e) => setSessionDate(e.target.value)}
+                className="w-[200px]"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">
+                {t("gamification.chooseCsv")}
+              </label>
+              <Input
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={!file || importMut.isPending}
+                onClick={() => runImport(true)}
+              >
+                {t("gamification.previewImport")}
+              </Button>
+              <Button
+                disabled={!file || importMut.isPending}
+                onClick={() => runImport(false)}
+              >
+                {t("gamification.applyPoints")}
+              </Button>
+            </div>
+          </div>
+          {importMut.isError && (
+            <p className="text-sm text-destructive">
+              {(importMut.error as Error)?.message || t("common.error")}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {result && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("gamification.importResult")}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {result.errors?.length > 0 && (
+              <ul className="list-disc pl-5 text-sm text-destructive">
+                {result.errors.map((e) => (
+                  <li key={e}>{e}</li>
+                ))}
+              </ul>
+            )}
+            <div className="text-sm text-muted-foreground flex flex-wrap gap-4">
+              <span>
+                {t("gamification.dryRun")}:{" "}
+                {result.dry_run ? t("gamification.yes") : t("gamification.no")}
+              </span>
+              {result.batch_id && (
+                <span className="font-mono text-xs">batch: {result.batch_id}</span>
+              )}
+            </div>
+            {result.summary && (
+              <p className="text-sm">
+                {Object.entries(result.summary)
+                  .map(([k, v]) => `${k}=${v}`)
+                  .join(" · ")}
+              </p>
+            )}
+            {result.rows?.length > 0 && (
+              <div className="rounded-md border max-h-[360px] overflow-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>#</TableHead>
+                      <TableHead>{t("gamification.csvName")}</TableHead>
+                      <TableHead>{t("gamification.csvAttendance")}</TableHead>
+                      <TableHead>{t("gamification.status")}</TableHead>
+                      <TableHead>{t("gamification.message")}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {result.rows.map((r) => (
+                      <TableRow key={`${r.line}-${r.raw_name}`}>
+                        <TableCell>{r.line}</TableCell>
+                        <TableCell>{r.raw_name}</TableCell>
+                        <TableCell>{r.attendance_raw}</TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {t(`gamification.rowStatus.${r.status}`, {
+                            defaultValue: r.status,
+                          })}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {r.message
+                            ? t(`gamification.rowMessages.${r.message}`, {
+                                defaultValue: r.message,
+                              })
+                            : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 function TiersTab() {
   const { t } = useTranslation();
   const { data: tiers, isLoading } = useTierConfig();
@@ -379,12 +531,16 @@ export default function GamificationSettingsPage() {
         <TabsList>
           <TabsTrigger value="rules">{t("gamification.pointRules")}</TabsTrigger>
           <TabsTrigger value="tiers">{t("gamification.tierConfig")}</TabsTrigger>
+          <TabsTrigger value="attendance">{t("gamification.attendanceTab")}</TabsTrigger>
         </TabsList>
         <TabsContent value="rules" className="mt-4">
           <PointRulesTab />
         </TabsContent>
         <TabsContent value="tiers" className="mt-4">
           <TiersTab />
+        </TabsContent>
+        <TabsContent value="attendance" className="mt-4">
+          <AttendanceCsvTab />
         </TabsContent>
       </Tabs>
     </div>
