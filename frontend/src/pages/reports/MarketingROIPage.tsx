@@ -109,6 +109,10 @@ export default function MarketingROIPage() {
     cost: s.campaign_cost,
   }));
 
+  const maxLeads = chartData?.length
+    ? Math.max(...chartData.map((d) => d.leads), 1)
+    : 1;
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -177,7 +181,7 @@ export default function MarketingROIPage() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart
                 data={chartData}
-                margin={{ top: 8, right: 8, bottom: 0, left: -12 }}
+                margin={{ top: 8, right: 8, bottom: 0, left: 4 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -188,11 +192,26 @@ export default function MarketingROIPage() {
                   tick={{ fontSize: 12 }}
                   className="fill-muted-foreground"
                 />
+                {/* Cost (currency) and lead count differ by orders of magnitude — separate axes */}
                 <YAxis
+                  yAxisId="cost"
+                  orientation="left"
+                  tick={{ fontSize: 12 }}
+                  className="fill-muted-foreground"
+                  tickFormatter={(v) =>
+                    typeof v === "number" ? v.toLocaleString() : String(v)
+                  }
+                />
+                <YAxis
+                  yAxisId="leads"
+                  orientation="right"
+                  domain={[0, Math.ceil(maxLeads * 1.15) || 1]}
+                  allowDecimals={false}
                   tick={{ fontSize: 12 }}
                   className="fill-muted-foreground"
                 />
                 <Tooltip
+                  cursor={{ fill: "hsl(var(--muted) / 0.2)" }}
                   contentStyle={{
                     borderRadius: "0.5rem",
                     border: "1px solid hsl(var(--border))",
@@ -202,15 +221,17 @@ export default function MarketingROIPage() {
                 />
                 <Legend />
                 <Bar
-                  dataKey="leads"
-                  name={t("reports.leads", "Leads")}
-                  fill="hsl(221, 83%, 53%)"
-                  radius={[6, 6, 0, 0]}
-                />
-                <Bar
+                  yAxisId="cost"
                   dataKey="cost"
                   name={t("reports.cost", "Cost")}
                   fill="hsl(24, 94%, 50%)"
+                  radius={[6, 6, 0, 0]}
+                />
+                <Bar
+                  yAxisId="leads"
+                  dataKey="leads"
+                  name={t("reports.leads", "Leads")}
+                  fill="hsl(221, 83%, 53%)"
                   radius={[6, 6, 0, 0]}
                 />
               </BarChart>

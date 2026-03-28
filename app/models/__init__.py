@@ -11,6 +11,7 @@ from app.models.unit_image import UnitImage
 from app.models.pipeline_history import PipelineHistory
 from app.models.lead_property_match import LeadPropertyMatch
 from app.models.audit_log import AuditLog
+from app.models.notification import Notification
 from app.models.gamification import (
     PointRule,
     PenaltyRule,
@@ -38,4 +39,5 @@ __all__ = [
     "PointTransaction",
     "UserPointsSummary",
     "TierConfig",
+    "Notification",
 ]

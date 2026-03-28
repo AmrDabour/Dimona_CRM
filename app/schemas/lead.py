@@ -6,6 +6,12 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, EmailStr, Field, field
 from app.models.lead import LeadStatus
 
 
+class LeadImportResult(BaseModel):
+    created: int
+    failed: int
+    errors: List[str] = Field(default_factory=list)
+
+
 class LeadBase(BaseModel):
     full_name: str = Field(
         ...,
@@ -52,6 +58,10 @@ class LeadCreate(LeadBase):
         default=None,
         validation_alias=AliasChoices("assigned_to", "assignedTo"),
     )
+    team_id: Optional[UUID] = Field(
+        default=None,
+        validation_alias=AliasChoices("team_id", "teamId"),
+    )
     custom_fields: Optional[dict] = None
     notes: Optional[str] = None
 
@@ -66,6 +76,10 @@ class LeadCreate(LeadBase):
 
 
 class LeadUpdate(BaseModel):
+    team_id: Optional[UUID] = Field(
+        default=None,
+        validation_alias=AliasChoices("team_id", "teamId"),
+    )
     full_name: Optional[str] = Field(
         None,
         min_length=2,
@@ -138,6 +152,7 @@ class LeadResponse(LeadBase):
     lost_reason: Optional[str]
     notes: Optional[str]
     assigned_to: Optional[UUID]
+    team_id: Optional[UUID]
     source_id: Optional[UUID]
     custom_fields: Optional[dict]
     created_at: datetime

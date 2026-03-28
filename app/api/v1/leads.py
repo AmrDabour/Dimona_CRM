@@ -1,6 +1,7 @@
 from typing import Annotated, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -8,6 +9,7 @@ from app.dependencies import get_current_user, require_roles, PaginationParams
 from app.services.lead_service import LeadService
 from app.services.lead_source_service import LeadSourceService
 from app.core.permissions import UserRole
+from app.core.exceptions import BadRequestException
 from app.models.user import User
 from app.models.lead import LeadStatus
 from app.schemas.lead import (
@@ -17,6 +19,7 @@ from app.schemas.lead import (
     LeadListResponse,
     LeadStatusUpdate,
     LeadAssign,
+    LeadImportResult,
 )
 from app.schemas.lead_source import LeadSourceCreate, LeadSourceResponse, LeadSourceUpdate
 from app.schemas.common import PaginatedResponse, MessageResponse
@@ -60,6 +63,54 @@ async def list_leads(
         page_size=pagination.page_size,
         total_pages=total_pages,
     )
+
+
+MAX_CSV_IMPORT_BYTES = 5 * 1024 * 1024
+
+
+@router.get("/export")
+async def export_leads_csv(
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN]))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    status: Optional[LeadStatus] = None,
+    source_id: Optional[UUID] = None,
+    assigned_to: Optional[UUID] = None,
+    search: Optional[str] = None,
+):
+    """Download leads matching the same filters as the list (CSV, UTF-8 BOM for Excel)."""
+    lead_service = LeadService(db)
+    leads = await lead_service.list_leads_for_export(
+        current_user=current_user,
+        status=status,
+        source_id=source_id,
+        assigned_to=assigned_to,
+        search=search,
+    )
+    body = LeadService.leads_to_csv_bytes(leads)
+    return Response(
+        content=body,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="leads_export.csv"',
+        },
+    )
+
+
+@router.post("/import", response_model=LeadImportResult)
+async def import_leads_csv(
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    file: UploadFile = File(...),
+):
+    """Import leads from a CSV file (header row required)."""
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise BadRequestException("Please upload a .csv file")
+    content = await file.read()
+    if len(content) > MAX_CSV_IMPORT_BYTES:
+        raise BadRequestException("File too large (max 5 MB)")
+    lead_service = LeadService(db)
+    created, failed, errors = await lead_service.import_leads_from_csv(content, current_user)
+    return LeadImportResult(created=created, failed=failed, errors=errors)
 
 
 @router.post("", response_model=LeadResponse)

@@ -4,11 +4,17 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, PaginationParams
+from app.dependencies import get_current_user, PaginationParams, require_roles
 from app.services.activity_service import ActivityService
 from app.models.user import User
 from app.models.activity import ActivityType
-from app.schemas.activity import ActivityCreate, ActivityUpdate, ActivityResponse
+from app.core.permissions import UserRole
+from app.schemas.activity import (
+    ActivityCreate,
+    ActivityUpdate,
+    ActivityResponse,
+    ManagerTaskAssign,
+)
 from app.schemas.common import PaginatedResponse, MessageResponse
 
 router = APIRouter(prefix="/leads/{lead_id}/activities", tags=["Activities"])
@@ -57,6 +63,19 @@ async def create_activity(
 
 # Separate router for activity operations by ID
 activity_router = APIRouter(prefix="/activities", tags=["Activities"])
+
+
+@activity_router.post("/assign", response_model=ActivityResponse)
+async def assign_manager_task(
+    body: ManagerTaskAssign,
+    current_user: Annotated[
+        User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))
+    ],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Assign a task/activity to an agent (optional lead). Sends in-app notification."""
+    activity_service = ActivityService(db)
+    return await activity_service.assign_task_from_manager(body, current_user)
 
 
 @activity_router.get("/{activity_id}", response_model=ActivityResponse)

@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
-from typing import List
+from pydantic import field_validator
+from typing import List, Optional
 from functools import lru_cache
 
 
@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     aws_secret_access_key: str = "minioadmin"
     aws_region: str = "us-east-1"
     s3_bucket_name: str = "dimora-files"
-    s3_endpoint_url: str | None = "http://localhost:9000"
+    s3_endpoint_url: Optional[str] = "http://localhost:9000"
 
     # WhatsApp
     whatsapp_api_url: str = "https://graph.facebook.com/v18.0"
@@ -55,6 +55,27 @@ class Settings(BaseSettings):
     # Celery
     celery_broker_url: str = "redis://localhost:6379/1"
     celery_result_backend: str = "redis://localhost:6379/2"
+
+    # SMTP (transactional email: reminders, task assignment). Use App Password for Gmail.
+    smtp_enabled: bool = False
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_from_name: str = "Dimora CRM"
+    email_notify_leads_on_meeting: bool = False
+
+    @field_validator("smtp_enabled", "email_notify_leads_on_meeting", mode="before")
+    @classmethod
+    def _coerce_bool(cls, v):
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s in ("true", "1", "yes", "on"):
+                return True
+            if s in ("false", "0", "no", "off", ""):
+                return False
+        return v
 
     # CORS
     cors_origins: List[str] = ["http://localhost:3000", "http://localhost:8000"]

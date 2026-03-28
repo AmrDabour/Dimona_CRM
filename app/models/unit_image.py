@@ -3,7 +3,7 @@ from sqlalchemy import String, Integer, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.database import Base
+from app.db_base import Base
 from app.models.base import TimestampMixin, generate_uuid
 
 

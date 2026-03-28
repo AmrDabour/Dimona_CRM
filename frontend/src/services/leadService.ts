@@ -1,6 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import type { Lead, LeadCreate, LeadUpdate, LeadStatusUpdate, LeadSource, LeadRequirement, PipelineHistory } from "@/types/lead";
+import type {
+  Lead,
+  LeadCreate,
+  LeadUpdate,
+  LeadStatusUpdate,
+  LeadSource,
+  LeadRequirement,
+  PipelineHistory,
+  LeadImportResult,
+} from "@/types/lead";
 import type { PaginatedResponse, PaginationParams } from "@/types/common";
 
 const LEADS_KEY = "leads";
@@ -17,6 +26,48 @@ export function useLead(id: string) {
     queryKey: [LEADS_KEY, id],
     queryFn: () => api.get<Lead>(`/leads/${id}`).then((r) => r.data),
     enabled: !!id,
+  });
+}
+
+export type LeadsExportParams = {
+  status?: string;
+  source_id?: string;
+  assigned_to?: string;
+  search?: string;
+};
+
+export async function exportLeadsCsv(params: LeadsExportParams): Promise<void> {
+  const res = await api.get("/leads/export", {
+    params: {
+      status: params.status || undefined,
+      source_id: params.source_id || undefined,
+      assigned_to: params.assigned_to || undefined,
+      search: params.search || undefined,
+    },
+    responseType: "blob",
+  });
+  const blob =
+    res.data instanceof Blob ? res.data : new Blob([res.data as BlobPart]);
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `leads_export_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+
+export function useImportLeads() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      return api.post<LeadImportResult>("/leads/import", fd).then((r) => r.data);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [LEADS_KEY] });
+      qc.invalidateQueries({ queryKey: ["pipeline"] });
+    },
   });
 }
 

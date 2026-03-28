@@ -3,7 +3,7 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, case
+from sqlalchemy import select, func, and_, or_, case, false as sql_false
 
 from app.models.lead import Lead, LeadStatus
 from app.models.lead_source import LeadSource
@@ -327,51 +327,72 @@ class ReportService:
 
         today = datetime.now(timezone.utc).date()
         week_ago = today - timedelta(days=7)
-        month_ago = today - timedelta(days=30)
 
-        base_query = select(Lead).where(Lead.is_deleted == False)
-
-        if current_user.role == UserRole.AGENT:
-            base_query = base_query.where(Lead.assigned_to == current_user.id)
-        elif current_user.role == UserRole.MANAGER:
-            members_query = select(User.id).where(
-                User.team_id == current_user.team_id,
-                User.is_deleted == False,
+        member_ids: list | None = None
+        if current_user.role == UserRole.MANAGER:
+            members_result = await self.db.execute(
+                select(User.id).where(
+                    User.team_id == current_user.team_id,
+                    User.is_deleted == False,
+                )
             )
-            members_result = await self.db.execute(members_query)
             member_ids = [m[0] for m in members_result.fetchall()]
-            base_query = base_query.where(Lead.assigned_to.in_(member_ids))
 
-        status_query = select(Lead.status, func.count(Lead.id)).select_from(base_query.subquery()).group_by(Lead.status)
+        # Lead list scope: admin = all; agent = own; manager = team + unassigned routed to team
+        lead_scope: list = [Lead.is_deleted == False]
+        if current_user.role == UserRole.AGENT:
+            lead_scope.append(Lead.assigned_to == current_user.id)
+        elif current_user.role == UserRole.MANAGER:
+            if not current_user.team_id:
+                lead_scope.append(sql_false())
+            else:
+                unassigned_team = and_(
+                    Lead.assigned_to.is_(None),
+                    Lead.team_id == current_user.team_id,
+                )
+                if member_ids:
+                    lead_scope.append(
+                        or_(Lead.assigned_to.in_(member_ids), unassigned_team)
+                    )
+                else:
+                    lead_scope.append(unassigned_team)
+
         status_result = await self.db.execute(
-            select(Lead.status, func.count(Lead.id)).where(
-                Lead.is_deleted == False,
-                *([Lead.assigned_to == current_user.id] if current_user.role == UserRole.AGENT else []),
-            ).group_by(Lead.status)
+            select(Lead.status, func.count(Lead.id))
+            .where(*lead_scope)
+            .group_by(Lead.status)
         )
         pipeline = {row[0].value: row[1] for row in status_result.fetchall()}
 
         new_today = await self.db.scalar(
             select(func.count(Lead.id)).where(
-                Lead.is_deleted == False,
+                *lead_scope,
                 func.date(Lead.created_at) == today,
-                *([Lead.assigned_to == current_user.id] if current_user.role == UserRole.AGENT else []),
             )
         )
 
         new_this_week = await self.db.scalar(
             select(func.count(Lead.id)).where(
-                Lead.is_deleted == False,
+                *lead_scope,
                 Lead.created_at >= datetime.combine(week_ago, datetime.min.time()),
-                *([Lead.assigned_to == current_user.id] if current_user.role == UserRole.AGENT else []),
             )
         )
+
+        # Scheduled activities: agent = own; manager = all team members; admin = entire org
+        activity_user_scope: list = []
+        if current_user.role == UserRole.AGENT:
+            activity_user_scope.append(Activity.user_id == current_user.id)
+        elif current_user.role == UserRole.MANAGER:
+            if member_ids:
+                activity_user_scope.append(Activity.user_id.in_(member_ids))
+            else:
+                activity_user_scope.append(sql_false())
 
         pending_activities = await self.db.scalar(
             select(func.count(Activity.id)).where(
                 Activity.is_completed == False,
                 Activity.scheduled_at != None,
-                Activity.user_id == current_user.id,
+                *activity_user_scope,
             )
         )
 
@@ -380,7 +401,7 @@ class ReportService:
                 Activity.is_completed == False,
                 Activity.scheduled_at != None,
                 Activity.scheduled_at < datetime.now(timezone.utc),
-                Activity.user_id == current_user.id,
+                *activity_user_scope,
             )
         )
 

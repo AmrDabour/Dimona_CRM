@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   usePendingActivities,
   useOverdueActivities,
@@ -49,13 +50,21 @@ const ACTIVITY_COLORS: Record<ActivityType, string> = {
   status_change: "bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300",
 };
 
-function ActivityCard({ activity, isOverdue }: { activity: Activity; isOverdue?: boolean }) {
+function ActivityCard({
+  activity,
+  isOverdue,
+  highlight,
+}: {
+  activity: Activity;
+  isOverdue?: boolean;
+  highlight?: boolean;
+}) {
   const { t } = useTranslation();
   const completeActivity = useCompleteActivity();
   const syncToCalendar = useSyncToCalendar();
 
-  const Icon = ACTIVITY_ICONS[activity.type];
-  const colorClass = ACTIVITY_COLORS[activity.type];
+  const Icon = ACTIVITY_ICONS[activity.type] ?? FileText;
+  const colorClass = ACTIVITY_COLORS[activity.type] ?? ACTIVITY_COLORS.note;
 
   function handleComplete() {
     completeActivity.mutate(activity.id, {
@@ -72,7 +81,12 @@ function ActivityCard({ activity, isOverdue }: { activity: Activity; isOverdue?:
   }
 
   return (
-    <Card className={cn(isOverdue && "border-red-300 dark:border-red-700")}>
+    <Card
+      className={cn(
+        isOverdue && "border-red-300 dark:border-red-700",
+        highlight && "ring-2 ring-primary ring-offset-2",
+      )}
+    >
       <CardContent className="flex items-start gap-4 p-4">
         <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg", colorClass)}>
           <Icon className="h-5 w-5" />
@@ -103,6 +117,19 @@ function ActivityCard({ activity, isOverdue }: { activity: Activity; isOverdue?:
             )}
             {activity.user && (
               <span>{activity.user.full_name}</span>
+            )}
+            {activity.assigned_by && (
+              <span>
+                {t("activities.fromManager")}: {activity.assigned_by.full_name}
+              </span>
+            )}
+            {activity.lead_id && (
+              <Link
+                to={`/leads/${activity.lead_id}`}
+                className="text-primary hover:underline"
+              >
+                {t("activities.openLead")}
+              </Link>
             )}
           </div>
         </div>
@@ -152,7 +179,7 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-function PendingTab() {
+function PendingTab({ highlightId }: { highlightId: string | null }) {
   const { t } = useTranslation();
   const { data: activities, isLoading } = usePendingActivities();
 
@@ -162,13 +189,17 @@ function PendingTab() {
   return (
     <div className="space-y-3">
       {activities.map((a) => (
-        <ActivityCard key={a.id} activity={a} />
+        <ActivityCard
+          key={a.id}
+          activity={a}
+          highlight={highlightId === a.id}
+        />
       ))}
     </div>
   );
 }
 
-function OverdueTab() {
+function OverdueTab({ highlightId }: { highlightId: string | null }) {
   const { t } = useTranslation();
   const { data: activities, isLoading } = useOverdueActivities();
 
@@ -178,7 +209,12 @@ function OverdueTab() {
   return (
     <div className="space-y-3">
       {activities.map((a) => (
-        <ActivityCard key={a.id} activity={a} isOverdue />
+        <ActivityCard
+          key={a.id}
+          activity={a}
+          isOverdue
+          highlight={highlightId === a.id}
+        />
       ))}
     </div>
   );
@@ -186,6 +222,8 @@ function OverdueTab() {
 
 export default function ActivitiesPage() {
   const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const highlightId = searchParams.get("activityId");
   const { data: pending } = usePendingActivities();
   const { data: overdue } = useOverdueActivities();
 
@@ -219,10 +257,10 @@ export default function ActivitiesPage() {
         </TabsList>
 
         <TabsContent value="pending">
-          <PendingTab />
+          <PendingTab highlightId={highlightId} />
         </TabsContent>
         <TabsContent value="overdue">
-          <OverdueTab />
+          <OverdueTab highlightId={highlightId} />
         </TabsContent>
       </Tabs>
     </div>

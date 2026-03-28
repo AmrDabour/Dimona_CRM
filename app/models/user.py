@@ -4,7 +4,7 @@ from sqlalchemy import String, Boolean, Enum as SQLEnum, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
 
-from app.database import Base
+from app.db_base import Base
 from app.models.base import TimestampMixin, SoftDeleteMixin, generate_uuid
 from app.core.permissions import UserRole
 
@@ -46,6 +46,16 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     )
     activities: Mapped[list["Activity"]] = relationship(
         "Activity",
+        back_populates="user",
+        foreign_keys="Activity.user_id",
+    )
+    assigned_tasks: Mapped[list["Activity"]] = relationship(
+        "Activity",
+        back_populates="assigned_by",
+        foreign_keys="Activity.assigned_by_id",
+    )
+    notifications: Mapped[list["Notification"]] = relationship(
+        "Notification",
         back_populates="user",
     )
     audit_logs: Mapped[list["AuditLog"]] = relationship(

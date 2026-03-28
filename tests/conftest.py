@@ -9,7 +9,8 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy import text
 
 from app.main import app as fastapi_app
-from app.database import Base, get_db
+from app.db_base import Base
+from app.database import get_db
 from app.config import settings
 from app.core.security import get_password_hash, create_access_token
 from app.models.user import User

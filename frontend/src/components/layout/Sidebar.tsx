@@ -87,6 +87,11 @@ export function Sidebar() {
           label: t("nav.marketingRoi"),
           roles: ["admin"],
         },
+        {
+          to: "/team/tasks",
+          label: t("nav.teamTasks"),
+          roles: ["admin", "manager"],
+        },
       ],
     },
     {

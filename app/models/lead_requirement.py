@@ -5,7 +5,7 @@ from sqlalchemy import String, Text, Numeric, Integer, Enum as SQLEnum, ForeignK
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
-from app.database import Base
+from app.db_base import Base
 from app.models.base import TimestampMixin, generate_uuid
 
 

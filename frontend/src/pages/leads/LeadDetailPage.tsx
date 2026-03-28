@@ -74,6 +74,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { AssignTaskDialog } from "@/components/tasks/AssignTaskDialog";
 import {
   Select,
   SelectContent,
@@ -228,6 +229,7 @@ export default function LeadDetailPage() {
   const [statusDialogOpen, setStatusDialogOpen] = useState(false);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
+  const [assignTaskDialogOpen, setAssignTaskDialogOpen] = useState(false);
   const [requirementDialogOpen, setRequirementDialogOpen] = useState(false);
   const [selectedAssignee, setSelectedAssignee] = useState("");
   const [notesValue, setNotesValue] = useState(lead?.notes ?? "");
@@ -462,7 +464,16 @@ export default function LeadDetailPage() {
 
         {/* ── Activities Tab ────────────────────────────────────── */}
         <TabsContent value="activities" className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex flex-wrap justify-end gap-2">
+            {(permissions.isAdmin || permissions.isManager) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAssignTaskDialogOpen(true)}
+              >
+                {t("activities.assignTask")}
+              </Button>
+            )}
             <Button
               size="sm"
               onClick={() => {
@@ -770,6 +781,12 @@ export default function LeadDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AssignTaskDialog
+        open={assignTaskDialogOpen}
+        onOpenChange={setAssignTaskDialogOpen}
+        leadId={id}
+      />
 
       {/* ── Activity Dialog ─────────────────────────────────────── */}
       <Dialog open={activityDialogOpen} onOpenChange={setActivityDialogOpen}>

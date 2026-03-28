@@ -22,7 +22,14 @@
     "settings": "Settings",
     "matching": "Matching",
     "leaderboard": "Leaderboard",
-    "gamification": "Points & Tiers"
+    "gamification": "Points & Tiers",
+    "teamTasks": "Team tasks"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "markAllRead": "Mark all as read",
+    "ariaLabel": "Open notifications"
   },
   "auth": {
     "login": "Login",
@@ -104,6 +111,18 @@
     "recentLeads": "Recent Leads",
     "upcomingTasks": "Upcoming Tasks"
   },
+  "teamTasks": {
+    "title": "Team tasks",
+    "subtitle": "Scheduled follow-ups for your team (calls, meetings, viewings)",
+    "onlyToday": "Today (UTC) only",
+    "overdueOnly": "Overdue only",
+    "tableTitle": "Upcoming and overdue",
+    "empty": "No scheduled tasks match your filters.",
+    "owner": "Logged by",
+    "lead": "Lead",
+    "type": "Type",
+    "viewLead": "View lead"
+  },
   "leads": {
     "title": "Leads",
     "createLead": "Create Lead",
@@ -134,6 +153,9 @@
     "notes": "Notes",
     "importLeads": "Import Leads",
     "exportLeads": "Export Leads",
+    "exportSuccess": "Leads exported successfully",
+    "importSuccess": "Imported {{count}} lead(s)",
+    "importPartial": "Imported {{created}} row(s); {{failed}} failed",
     "statuses": {
       "NEW": "New",
       "CONTACTED": "Contacted",
@@ -154,7 +176,12 @@
     "viewing": "Viewing",
     "negotiation": "Negotiation",
     "won": "Won",
-    "lost": "Lost"
+    "lost": "Lost",
+    "statusUpdated": "Status updated",
+    "lostReasonTitle": "Mark lead as lost",
+    "lostReasonPlaceholder": "e.g. Budget, chose competitor, not interested…",
+    "lostReasonHint": "Required by the system. Leave blank to use a default reason.",
+    "defaultLostReason": "Marked lost from pipeline"
   },
   "inventory": {
     "developers": "Developers",
@@ -233,16 +260,31 @@
     "overdue": "Overdue",
     "completed": "Completed",
     "createActivity": "Create Activity",
+    "type": "Activity type",
+    "assignTask": "Assign task",
+    "assignTaskAssignee": "Assign to",
+    "assignTaskAssigneeRequired": "Select a team member",
+    "assignTaskSuccess": "Task assigned successfully",
+    "assignTaskGeneralHint": "This task is not linked to a specific lead.",
+    "assignTaskOptionalLeadIntro": "You can link this task to a client below, or leave it as a general task.",
+    "assignTaskLeadOptional": "Client (optional)",
+    "assignTaskNoLead": "No specific client",
+    "assignTaskSubmit": "Send task",
+    "descriptionOptional": "Instructions (optional)",
+    "scheduledOptional": "Due date and time (optional)",
+    "fromManager": "From manager",
+    "openLead": "Open lead",
     "markComplete": "Mark Complete",
     "syncCalendar": "Sync to Calendar",
     "types": {
-      "CALL": "Call",
-      "MEETING": "Meeting",
-      "NOTE": "Note",
-      "WHATSAPP": "WhatsApp",
-      "EMAIL": "Email",
-      "VIEWING": "Viewing",
-      "FOLLOW_UP": "Follow Up"
+      "call": "Call",
+      "whatsapp": "WhatsApp",
+      "meeting": "Meeting",
+      "note": "Note",
+      "email": "Email",
+      "status_change": "Status change",
+      "viewing": "Viewing",
+      "follow_up": "Follow up"
     }
   },
   "reports": {
@@ -258,7 +300,11 @@
     "conversionRate": "Conversion Rate",
     "costPerLead": "Cost per Lead",
     "costPerWon": "Cost per Won",
-    "campaignCost": "Campaign Cost"
+    "campaignCost": "Campaign Cost",
+    "pointsSummary": "Points Summary",
+    "showDetails": "Show Details",
+    "hideDetails": "Hide Details",
+    "pointHistory": "Point History"
   },
   "admin": {
     "users": "User Management",
@@ -324,6 +370,13 @@
     "runComplianceCheck": "Run Compliance Check",
     "complianceCheckDone": "Compliance check complete",
     "agentsChecked": "agents checked",
-    "awarded": "awarded"
+    "awarded": "awarded",
+    "pointsBreakdown": "Points Breakdown & Rules",
+    "howToEarn": "How to Earn Points",
+    "history": "Transaction History",
+    "noRules": "No rules currently configured.",
+    "noHistory": "No point history available for this month.",
+    "pointsPerEvent": "Points",
+    "minutes": "mins"
   }
 }

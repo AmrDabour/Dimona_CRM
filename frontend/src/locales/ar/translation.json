@@ -22,7 +22,14 @@
     "settings": "الإعدادات",
     "matching": "المطابقة",
     "leaderboard": "لوحة المتصدرين",
-    "gamification": "النقاط والمستويات"
+    "gamification": "النقاط والمستويات",
+    "teamTasks": "مهام الفريق"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "empty": "لا توجد إشعارات",
+    "markAllRead": "تعليم الكل كمقروء",
+    "ariaLabel": "فتح الإشعارات"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -104,6 +111,18 @@
     "recentLeads": "أحدث العملاء",
     "upcomingTasks": "المهام القادمة"
   },
+  "teamTasks": {
+    "title": "مهام الفريق",
+    "subtitle": "المتابعات المجدولة لفريقك (مكالمات، اجتماعات، معاينات)",
+    "onlyToday": "اليوم فقط (UTC)",
+    "overdueOnly": "المتأخرة فقط",
+    "tableTitle": "القادمة والمتأخرة",
+    "empty": "لا توجد مهام مطابقة للتصفية.",
+    "owner": "سجّلها",
+    "lead": "العميل",
+    "type": "النوع",
+    "viewLead": "عرض العميل"
+  },
   "leads": {
     "title": "العملاء",
     "createLead": "إضافة عميل",
@@ -134,6 +153,9 @@
     "notes": "ملاحظات",
     "importLeads": "استيراد العملاء",
     "exportLeads": "تصدير العملاء",
+    "exportSuccess": "تم تصدير العملاء بنجاح",
+    "importSuccess": "تم استيراد {{count}} عميل/عملاء",
+    "importPartial": "تم استيراد {{created}} صفاً؛ فشل {{failed}}",
     "statuses": {
       "NEW": "جديد",
       "CONTACTED": "تم التواصل",
@@ -154,7 +176,12 @@
     "viewing": "معاينة",
     "negotiation": "تفاوض",
     "won": "تم البيع",
-    "lost": "خسارة"
+    "lost": "خسارة",
+    "statusUpdated": "تم تحديث الحالة",
+    "lostReasonTitle": "تسجيل العميل كخسارة",
+    "lostReasonPlaceholder": "مثال: الميزانية، اختار منافس، غير مهتم…",
+    "lostReasonHint": "مطلوب من النظام. اترك الحقل فارغًا لاستخدام سبب افتراضي.",
+    "defaultLostReason": "تم التعليم كخسارة من خط المبيعات"
   },
   "inventory": {
     "developers": "المطورين",
@@ -233,16 +260,31 @@
     "overdue": "متأخرة",
     "completed": "مكتملة",
     "createActivity": "إنشاء نشاط",
+    "type": "نوع النشاط",
+    "assignTask": "تكليف مهمة",
+    "assignTaskAssignee": "تعيين إلى",
+    "assignTaskAssigneeRequired": "اختر عضو الفريق",
+    "assignTaskSuccess": "تم إرسال المهمة",
+    "assignTaskGeneralHint": "هذه المهمة غير مرتبطة بعميل محدد.",
+    "assignTaskOptionalLeadIntro": "يمكنك ربط المهمة بعميل من القائمة أو تركها مهمة عامة.",
+    "assignTaskLeadOptional": "العميل (اختياري)",
+    "assignTaskNoLead": "بدون عميل محدد",
+    "assignTaskSubmit": "إرسال المهمة",
+    "descriptionOptional": "تعليمات (اختياري)",
+    "scheduledOptional": "موعد الاستحقاق (اختياري)",
+    "fromManager": "من المدير",
+    "openLead": "فتح العميل",
     "markComplete": "تعليم كمكتمل",
     "syncCalendar": "مزامنة مع التقويم",
     "types": {
-      "CALL": "مكالمة",
-      "MEETING": "اجتماع",
-      "NOTE": "ملاحظة",
-      "WHATSAPP": "واتساب",
-      "EMAIL": "بريد إلكتروني",
-      "VIEWING": "معاينة",
-      "FOLLOW_UP": "متابعة"
+      "call": "مكالمة",
+      "whatsapp": "واتساب",
+      "meeting": "اجتماع",
+      "note": "ملاحظة",
+      "email": "بريد إلكتروني",
+      "status_change": "تغيير الحالة",
+      "viewing": "معاينة",
+      "follow_up": "متابعة"
     }
   },
   "reports": {
@@ -258,7 +300,11 @@
     "conversionRate": "معدل التحويل",
     "costPerLead": "تكلفة العميل",
     "costPerWon": "تكلفة الصفقة",
-    "campaignCost": "تكلفة الحملة"
+    "campaignCost": "تكلفة الحملة",
+    "pointsSummary": "ملخص النقاط",
+    "showDetails": "عرض التفاصيل",
+    "hideDetails": "إخفاء التفاصيل",
+    "pointHistory": "سجل النقاط"
   },
   "admin": {
     "users": "إدارة المستخدمين",
@@ -324,6 +370,46 @@
     "runComplianceCheck": "تشغيل فحص الالتزام",
     "complianceCheckDone": "اكتمل فحص الالتزام",
     "agentsChecked": "مندوب تم فحصه",
-    "awarded": "تم منح النقاط"
+    "awarded": "تم منح النقاط",
+    "events": {
+      "call_logged": "تسجيل مكالمة",
+      "inventory_added": "إضافة وحدة مخزون",
+      "lead_profile_complete": "إكمال ملف العميل",
+      "negotiation_reached": "الوصول لمرحلة التفاوض",
+      "no_overdue_weekly": "عدم وجود مهام متأخرة (أسبوعياً)",
+      "rent_won": "صفقة إيجار ناجحة",
+      "sale_won": "صفقة بيع ناجحة",
+      "viewing_completed": "إتمام معاينة",
+      "viewing_scheduled": "جدولة معاينة",
+      "lost_no_reason": "خسارة عميل بدون سبب",
+      "missed_meeting": "فوات موعد / اجتماع",
+      "slow_response": "استجابة بطيئة (>60 دقيقة)"
+    },
+    "categories": {
+      "Activity": "نشاط",
+      "Compliance": "التزام",
+      "Conversion": "تحويل"
+    },
+    "descriptions": {
+      "call_logged": "تم تسجيل مكالمة هاتفية (> 1 دقيقة)",
+      "inventory_added": "تم إضافة وحدة جديدة بكامل التفاصيل",
+      "lead_profile_complete": "ملف العميل مكتمل (الاسم، الميزانية، المنطقة، التفضيلات)",
+      "negotiation_reached": "تحرك العميل لمرحلة التفاوض",
+      "no_overdue_weekly": "صفر مهام متأخرة طوال الأسبوع",
+      "rent_won": "تم إغلاق صفقة إيجار (فوز)",
+      "sale_won": "تم إغلاق صفقة بيع (فوز)",
+      "viewing_completed": "تم إتمام معاينة للعقار في الموقع",
+      "viewing_scheduled": "تم جدولة معاينة للعقار",
+      "lost_no_reason": "تم تعليم العميل كخسارة بدون إبداء سبب واضح",
+      "missed_meeting": "فوات موعد معاينة أو اجتماع مجدول بدون إشعار مسبق",
+      "slow_response": "الرد على عميل جديد بعد أكثر من 60 دقيقة"
+    },
+    "pointsBreakdown": "تفاصيل ومصادر النقاط",
+    "howToEarn": "كيفية اكتساب النقاط",
+    "history": "سجل العمليات",
+    "noRules": "لا توجد قواعد مكونة حاليا.",
+    "noHistory": "لا يوجد سجل نقاط متاح لهذا الشهر.",
+    "pointsPerEvent": "نقاط",
+    "minutes": "دقيقة"
   }
 }

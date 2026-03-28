@@ -203,21 +203,42 @@ async def seed() -> None:
         from datetime import datetime, timedelta, timezone
 
         for full_name, phone, email, source_name, assigned_to, status, intent in lead_defs:
-            lead = await db.scalar(select(Lead).where(Lead.phone == phone))
+            lead = await db.scalar(
+                select(Lead).where(Lead.phone == phone, Lead.is_deleted.is_(False))
+            )
             if not lead:
-                lead = Lead(
-                    full_name=full_name,
-                    phone=phone,
-                    email=email,
-                    whatsapp_number=phone,
-                    source_id=sources[source_name].id,
-                    assigned_to=assigned_to,
-                    status=LeadStatus(status),
-                    lost_reason="Budget mismatch" if status == "lost" else None,
-                    custom_fields={"intent": intent, "preferred_area": "New Cairo"},
+                deleted = await db.scalar(
+                    select(Lead).where(Lead.phone == phone, Lead.is_deleted.is_(True))
                 )
-                db.add(lead)
-                await db.flush()
+                if deleted:
+                    deleted.is_deleted = False
+                    deleted.deleted_at = None
+                    deleted.full_name = full_name
+                    deleted.email = email
+                    deleted.whatsapp_number = phone
+                    deleted.source_id = sources[source_name].id
+                    deleted.assigned_to = assigned_to
+                    deleted.status = LeadStatus(status)
+                    deleted.lost_reason = (
+                        "Budget mismatch" if status == "lost" else None
+                    )
+                    deleted.custom_fields = {"intent": intent, "preferred_area": "New Cairo"}
+                    lead = deleted
+                    await db.flush()
+                else:
+                    lead = Lead(
+                        full_name=full_name,
+                        phone=phone,
+                        email=email,
+                        whatsapp_number=phone,
+                        source_id=sources[source_name].id,
+                        assigned_to=assigned_to,
+                        status=LeadStatus(status),
+                        lost_reason="Budget mismatch" if status == "lost" else None,
+                        custom_fields={"intent": intent, "preferred_area": "New Cairo"},
+                    )
+                    db.add(lead)
+                    await db.flush()
 
             # Add multiple activities if none exist for this lead.
             existing_activity = await db.scalar(

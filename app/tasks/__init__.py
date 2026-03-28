@@ -27,6 +27,10 @@ celery_app.conf.update(
 )
 
 celery_app.conf.beat_schedule = {
+    "dispatch-activity-reminders": {
+        "task": "app.tasks.notification_tasks.dispatch_activity_reminders",
+        "schedule": 60.0,
+    },
     "check-overdue-activities": {
         "task": "app.tasks.notification_tasks.check_overdue_activities",
         "schedule": 3600.0,

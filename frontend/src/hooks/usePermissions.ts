@@ -35,5 +35,6 @@ export function usePermissions() {
     canViewAllReports: is("admin"),
     canViewTeamReports: is("admin") || is("manager"),
     canViewMarketingROI: is("admin"),
+    canViewTeamTasks: is("admin") || is("manager"),
   };
 }

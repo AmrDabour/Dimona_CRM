@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
-import type { Activity, ActivityCreate } from "@/types/activity";
+import type { Activity, ActivityCreate, ManagerTaskAssignPayload } from "@/types/activity";
 import type { PaginatedResponse } from "@/types/common";
 
 function getItems<T>(data: T[] | PaginatedResponse<T> | { items: T[] }): T[] {
@@ -24,6 +24,25 @@ export function useCreateActivity() {
     mutationFn: ({ leadId, data }: { leadId: string; data: ActivityCreate }) =>
       api.post<Activity>(`/leads/${leadId}/activities`, data).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["activities"] }),
+  });
+}
+
+export function useAssignManagerTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ManagerTaskAssignPayload) =>
+      api.post<Activity>("/activities/assign", {
+        assignee_id: body.assignee_id,
+        type: body.type,
+        description: body.description,
+        scheduled_at: body.scheduled_at,
+        lead_id: body.lead_id || undefined,
+      }).then((r) => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["activities"] });
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    },
   });
 }
 

@@ -13,14 +13,16 @@ export interface Activity {
   type: ActivityType;
   description?: string;
   scheduled_at?: string;
-  lead_id: string;
-  user_id?: string;
+  lead_id?: string | null;
+  user_id?: string | null;
+  assigned_by_id?: string | null;
   call_recording_url?: string;
   is_completed: boolean;
   google_calendar_event_id?: string;
   created_at: string;
   updated_at: string;
   user?: { id: string; full_name: string; email: string };
+  assigned_by?: { id: string; full_name: string; email: string };
 }
 
 export interface ActivityCreate {
@@ -28,4 +30,12 @@ export interface ActivityCreate {
   description?: string;
   scheduled_at?: string;
   call_recording_url?: string;
+}
+
+export interface ManagerTaskAssignPayload {
+  assignee_id: string;
+  type: "call" | "whatsapp" | "meeting" | "note" | "email";
+  description?: string;
+  scheduled_at?: string;
+  lead_id?: string;
 }

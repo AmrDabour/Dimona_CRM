@@ -114,6 +114,7 @@ async def process_facebook_lead(db: AsyncSession, lead_data: dict):
         email=email,
         status=LeadStatus.NEW,
         source_id=source.id,
+        team_id=source.default_team_id,
         custom_fields={"facebook_leadgen_id": leadgen_id, "ad_id": ad_id},
     )
 
@@ -192,6 +193,7 @@ async def handle_whatsapp_webhook(
             whatsapp_number=phone,
             status=LeadStatus.NEW,
             source_id=source.id,
+            team_id=source.default_team_id,
         )
         db.add(new_lead)
         await db.commit()
@@ -242,6 +244,7 @@ async def handle_website_webhook(
         email=email,
         status=LeadStatus.NEW,
         source_id=source.id,
+        team_id=source.default_team_id,
         custom_fields={"initial_message": message} if message else None,
     )
 

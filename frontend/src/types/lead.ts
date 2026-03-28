@@ -28,12 +28,19 @@ export interface Lead {
   lost_reason?: string;
   notes?: string;
   assigned_to?: string;
+  team_id?: string;
   source_id?: string;
   custom_fields?: Record<string, unknown>;
   created_at: string;
   updated_at: string;
   source?: LeadSourceInfo;
   assigned_user?: LeadAssignedUserInfo;
+}
+
+export interface LeadImportResult {
+  created: number;
+  failed: number;
+  errors: string[];
 }
 
 export interface LeadCreate {
@@ -67,6 +74,7 @@ export interface LeadSource {
   name: string;
   campaign_name?: string;
   campaign_cost?: number;
+  default_team_id?: string;
   created_at: string;
   lead_count?: number;
 }

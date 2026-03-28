@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 import { usePipelineStats, useLeadsByStage } from "@/services/pipelineService";
 import { useUpdateLeadStatus } from "@/services/leadService";
 import type { Lead, LeadStatus } from "@/types/lead";
@@ -8,6 +10,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,21 +46,40 @@ const STAGE_COLORS: Record<LeadStatus, { bg: string; border: string; dot: string
   lost:        { bg: "bg-red-50 dark:bg-red-950/30",     border: "border-red-300 dark:border-red-700",     dot: "bg-red-500" },
 };
 
-function StageColumn({ status }: { status: LeadStatus }) {
+function formatApiValidationDetail(err: unknown): string | null {
+  const ax = err as { response?: { data?: { detail?: unknown } } };
+  const detail = ax.response?.data?.detail;
+  if (detail == null) return null;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((row: { loc?: unknown[]; msg?: string }) => {
+        const loc = Array.isArray(row.loc)
+          ? row.loc.filter((x) => typeof x === "string" && x !== "body").join(".")
+          : "";
+        return loc ? `${loc}: ${row.msg ?? ""}` : (row.msg ?? "");
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+  return null;
+}
+
+function StageColumn({
+  status,
+  onChangeStatus,
+}: {
+  status: LeadStatus;
+  onChangeStatus: (lead: Lead, newStatus: LeadStatus) => void;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { data: leadsData, isLoading } = useLeadsByStage(status);
   const leads = leadsData?.items || [];
   const { data: stats } = usePipelineStats();
-  const updateStatus = useUpdateLeadStatus();
 
   const colors = STAGE_COLORS[status];
   const count = stats?.stages.find((s) => s.stage === status)?.count ?? leads?.length ?? 0;
-
-  function handleStatusChange(lead: Lead, newStatus: LeadStatus) {
-    if (newStatus === lead.status) return;
-    updateStatus.mutate({ id: lead.id, data: { status: newStatus } });
-  }
 
   return (
     <div
@@ -111,7 +141,7 @@ function StageColumn({ status }: { status: LeadStatus }) {
                     {STAGES.filter((s) => s !== status).map((s) => (
                       <DropdownMenuItem
                         key={s}
-                        onClick={() => handleStatusChange(lead, s)}
+                        onClick={() => onChangeStatus(lead, s)}
                       >
                         <span
                           className={cn(
@@ -165,6 +195,44 @@ function PipelineSkeleton() {
 export default function PipelinePage() {
   const { t } = useTranslation();
   const { isLoading } = usePipelineStats();
+  const updateStatus = useUpdateLeadStatus();
+  const [lostModal, setLostModal] = useState<{ lead: Lead; reason: string } | null>(null);
+
+  const handleChangeStatus = (lead: Lead, newStatus: LeadStatus) => {
+    if (newStatus === lead.status) return;
+    if (newStatus === "lost") {
+      setLostModal({ lead, reason: lead.lost_reason ?? "" });
+      return;
+    }
+    updateStatus.mutate(
+      { id: lead.id, data: { status: newStatus } },
+      {
+        onSuccess: () => toast.success(t("pipeline.statusUpdated")),
+        onError: (err) =>
+          toast.error(formatApiValidationDetail(err) ?? t("common.error")),
+      },
+    );
+  };
+
+  const confirmLost = () => {
+    if (!lostModal) return;
+    const reason =
+      lostModal.reason.trim() || t("pipeline.defaultLostReason");
+    updateStatus.mutate(
+      {
+        id: lostModal.lead.id,
+        data: { status: "lost", lost_reason: reason },
+      },
+      {
+        onSuccess: () => {
+          setLostModal(null);
+          toast.success(t("pipeline.statusUpdated"));
+        },
+        onError: (err) =>
+          toast.error(formatApiValidationDetail(err) ?? t("common.error")),
+      },
+    );
+  };
 
   if (isLoading) return <PipelineSkeleton />;
 
@@ -179,10 +247,65 @@ export default function PipelinePage() {
       <div className="flex-1 overflow-x-auto overflow-y-hidden px-6 pb-6">
         <div className="flex h-full gap-4">
           {STAGES.map((status) => (
-            <StageColumn key={status} status={status} />
+            <StageColumn
+              key={status}
+              status={status}
+              onChangeStatus={handleChangeStatus}
+            />
           ))}
         </div>
       </div>
+
+      <Dialog
+        open={lostModal !== null}
+        onOpenChange={(open) => !open && setLostModal(null)}
+      >
+        <DialogContent
+          className="sm:max-w-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DialogHeader>
+            <DialogTitle>{t("pipeline.lostReasonTitle")}</DialogTitle>
+            <DialogDescription>
+              {lostModal?.lead.full_name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2 py-2">
+            <Label htmlFor="lost-reason">{t("leads.lostReason")}</Label>
+            <textarea
+              id="lost-reason"
+              rows={3}
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              placeholder={t("pipeline.lostReasonPlaceholder")}
+              value={lostModal?.reason ?? ""}
+              onChange={(e) =>
+                setLostModal((prev) =>
+                  prev ? { ...prev, reason: e.target.value } : null,
+                )
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              {t("pipeline.lostReasonHint")}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLostModal(null)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmLost}
+              disabled={updateStatus.isPending}
+            >
+              {t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

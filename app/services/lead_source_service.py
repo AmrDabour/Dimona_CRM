@@ -48,6 +48,7 @@ class LeadSourceService:
                 "name": source.name,
                 "campaign_name": source.campaign_name,
                 "campaign_cost": source.campaign_cost,
+                "default_team_id": source.default_team_id,
                 "created_at": source.created_at,
             }
 
@@ -75,6 +76,7 @@ class LeadSourceService:
             name=source_data.name,
             campaign_name=source_data.campaign_name,
             campaign_cost=source_data.campaign_cost,
+            default_team_id=source_data.default_team_id,
         )
 
         self.db.add(new_source)
@@ -100,6 +102,9 @@ class LeadSourceService:
             source.campaign_name = source_data.campaign_name
         if source_data.campaign_cost is not None:
             source.campaign_cost = source_data.campaign_cost
+        patch = source_data.model_dump(exclude_unset=True)
+        if "default_team_id" in patch:
+            source.default_team_id = patch["default_team_id"]
 
         await self.db.commit()
         await self.db.refresh(source)

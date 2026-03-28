@@ -6,12 +6,26 @@ services:
     container_name: dimora-api
     ports:
       - "8000:8000"
+    # Load host .env into the container so SMTP_* and other vars match local config
+    # (explicit `environment` entries below still override when both are set).
+    env_file:
+      - path: .env
+        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://dimora:dimora_secret@db:5432/dimora_crm
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - S3_ENDPOINT_URL=http://minio:9000
+      - SMTP_ENABLED=${SMTP_ENABLED:-false}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Dimora CRM}
+      - EMAIL_NOTIFY_LEADS_ON_MEETING=${EMAIL_NOTIFY_LEADS_ON_MEETING:-false}
+      - APP_NAME=${APP_NAME:-Dimora CRM}
     depends_on:
       db:
         condition: service_healthy
@@ -30,11 +44,23 @@ services:
       dockerfile: Dockerfile
     container_name: dimora-celery-worker
     command: celery -A app.tasks worker --loglevel=info
+    env_file:
+      - path: .env
+        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://dimora:dimora_secret@db:5432/dimora_crm
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - SMTP_ENABLED=${SMTP_ENABLED:-false}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
+      - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Dimora CRM}
+      - EMAIL_NOTIFY_LEADS_ON_MEETING=${EMAIL_NOTIFY_LEADS_ON_MEETING:-false}
+      - APP_NAME=${APP_NAME:-Dimora CRM}
     depends_on:
       - api
       - redis

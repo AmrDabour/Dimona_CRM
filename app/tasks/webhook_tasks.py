@@ -60,6 +60,7 @@ async def _process_facebook_lead(lead_data: Dict[str, Any]):
             email=email,
             status=LeadStatus.NEW,
             source_id=source.id,
+            team_id=source.default_team_id,
             custom_fields={"facebook_leadgen_id": leadgen_id, "ad_id": ad_id},
         )
 
@@ -121,6 +122,7 @@ async def _process_whatsapp_message(message_data: Dict[str, Any]):
                 whatsapp_number=phone,
                 status=LeadStatus.NEW,
                 source_id=source.id,
+                team_id=source.default_team_id,
             )
             db.add(new_lead)
 

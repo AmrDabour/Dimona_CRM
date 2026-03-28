@@ -1,11 +1,14 @@
+import csv
+import io
 from uuid import UUID
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Any
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.orm import selectinload
 
 from app.models.lead import Lead, LeadStatus
+from app.models.lead_source import LeadSource
 from app.models.user import User
 from app.models.team import Team
 from app.models.pipeline_history import PipelineHistory
@@ -14,6 +17,8 @@ from app.core.exceptions import NotFoundException, BadRequestException, Permissi
 from app.core.permissions import UserRole
 from app.schemas.lead import LeadCreate, LeadUpdate, LeadStatusUpdate, LeadAssign
 from app.services.gamification_service import GamificationService
+from app.services.lead_access import can_access_lead as lead_can_access
+from sqlalchemy import false as sql_false
 
 
 class LeadService:
@@ -42,30 +47,19 @@ class LeadService:
         if not lead:
             raise NotFoundException("Lead")
 
-        if not self._can_access_lead(lead, current_user):
+        if not lead_can_access(lead, current_user):
             raise PermissionDeniedException("You don't have access to this lead")
 
         return lead
 
-    def _can_access_lead(self, lead: Lead, user: User) -> bool:
-        if user.role == UserRole.ADMIN:
-            return True
-        if user.role == UserRole.MANAGER:
-            return lead.assigned_user and lead.assigned_user.team_id == user.team_id
-        if user.role == UserRole.AGENT:
-            return lead.assigned_to == user.id
-        return False
-
-    async def list_leads(
+    async def _build_filtered_leads_query(
         self,
         current_user: User,
-        page: int = 1,
-        page_size: int = 20,
         status: Optional[LeadStatus] = None,
         source_id: Optional[UUID] = None,
         assigned_to: Optional[UUID] = None,
         search: Optional[str] = None,
-    ) -> Tuple[List[Lead], int]:
+    ):
         query = select(Lead).where(Lead.is_deleted == False)
         query = query.options(
             selectinload(Lead.source),
@@ -75,13 +69,25 @@ class LeadService:
         if current_user.role == UserRole.AGENT:
             query = query.where(Lead.assigned_to == current_user.id)
         elif current_user.role == UserRole.MANAGER:
-            team_members_query = select(User.id).where(
-                User.team_id == current_user.team_id,
-                User.is_deleted == False,
-            )
-            team_members = await self.db.execute(team_members_query)
-            member_ids = [m[0] for m in team_members.fetchall()]
-            query = query.where(Lead.assigned_to.in_(member_ids))
+            if not current_user.team_id:
+                query = query.where(sql_false())
+            else:
+                team_members_query = select(User.id).where(
+                    User.team_id == current_user.team_id,
+                    User.is_deleted == False,
+                )
+                team_members = await self.db.execute(team_members_query)
+                member_ids = [m[0] for m in team_members.fetchall()]
+                unassigned_team = and_(
+                    Lead.assigned_to.is_(None),
+                    Lead.team_id == current_user.team_id,
+                )
+                if member_ids:
+                    query = query.where(
+                        or_(Lead.assigned_to.in_(member_ids), unassigned_team)
+                    )
+                else:
+                    query = query.where(unassigned_team)
 
         if status:
             query = query.where(Lead.status == status)
@@ -99,6 +105,22 @@ class LeadService:
                 )
             )
 
+        return query
+
+    async def list_leads(
+        self,
+        current_user: User,
+        page: int = 1,
+        page_size: int = 20,
+        status: Optional[LeadStatus] = None,
+        source_id: Optional[UUID] = None,
+        assigned_to: Optional[UUID] = None,
+        search: Optional[str] = None,
+    ) -> Tuple[List[Lead], int]:
+        query = await self._build_filtered_leads_query(
+            current_user, status, source_id, assigned_to, search
+        )
+
         count_query = select(func.count()).select_from(query.subquery())
         total = await self.db.scalar(count_query)
 
@@ -109,6 +131,143 @@ class LeadService:
         leads = result.scalars().all()
 
         return list(leads), total
+
+    async def list_leads_for_export(
+        self,
+        current_user: User,
+        status: Optional[LeadStatus] = None,
+        source_id: Optional[UUID] = None,
+        assigned_to: Optional[UUID] = None,
+        search: Optional[str] = None,
+        max_rows: int = 10000,
+    ) -> List[Lead]:
+        query = await self._build_filtered_leads_query(
+            current_user, status, source_id, assigned_to, search
+        )
+        query = query.order_by(Lead.created_at.desc()).limit(max_rows)
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    @staticmethod
+    def leads_to_csv_bytes(leads: List[Lead]) -> bytes:
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(
+            [
+                "full_name",
+                "phone",
+                "email",
+                "whatsapp_number",
+                "status",
+                "source_name",
+                "assigned_email",
+                "notes",
+                "created_at",
+            ]
+        )
+        for lead in leads:
+            writer.writerow(
+                [
+                    lead.full_name,
+                    lead.phone,
+                    lead.email or "",
+                    lead.whatsapp_number or "",
+                    lead.status.value if lead.status else "",
+                    lead.source.name if lead.source else "",
+                    lead.assigned_user.email if lead.assigned_user else "",
+                    (lead.notes or "").replace("\n", " ").replace("\r", " "),
+                    lead.created_at.isoformat() if lead.created_at else "",
+                ]
+            )
+        return buf.getvalue().encode("utf-8-sig")
+
+    async def resolve_source_id_by_name(self, name: str) -> Optional[UUID]:
+        n = name.strip()
+        if not n:
+            return None
+        r = await self.db.execute(select(LeadSource).where(LeadSource.name == n))
+        src = r.scalar_one_or_none()
+        if src:
+            return src.id
+        r = await self.db.execute(select(LeadSource).where(LeadSource.name.ilike(n)))
+        src = r.scalar_one_or_none()
+        return src.id if src else None
+
+    @staticmethod
+    def _normalize_csv_cell(row: dict[str, Any]) -> dict[str, str]:
+        out: dict[str, str] = {}
+        for k, v in row.items():
+            if k is None:
+                continue
+            key = str(k).strip().lower().replace(" ", "_")
+            if v is None:
+                out[key] = ""
+            elif isinstance(v, str):
+                out[key] = v.strip()
+            else:
+                out[key] = str(v).strip()
+        return out
+
+    def _lead_create_from_csv_row(
+        self, norm: dict[str, str], source_id: Optional[UUID]
+    ) -> LeadCreate:
+        name = norm.get("full_name") or norm.get("name") or norm.get("fullname") or ""
+        phone = norm.get("phone") or norm.get("mobile") or norm.get("tel") or ""
+        email_s = norm.get("email") or ""
+        wa = norm.get("whatsapp_number") or norm.get("whatsapp") or ""
+        notes = norm.get("notes") or norm.get("note") or ""
+
+        return LeadCreate(
+            full_name=name,
+            phone=phone,
+            email=email_s or None,
+            whatsapp_number=wa or None,
+            source_id=source_id,
+            notes=notes or None,
+        )
+
+    async def import_leads_from_csv(
+        self,
+        file_bytes: bytes,
+        current_user: User,
+    ) -> Tuple[int, int, List[str]]:
+        text = file_bytes.decode("utf-8-sig")
+        reader = csv.DictReader(io.StringIO(text))
+        if not reader.fieldnames:
+            raise BadRequestException("CSV has no header row")
+
+        created = 0
+        failed = 0
+        errors: List[str] = []
+        row_num = 1
+
+        for raw in reader:
+            row_num += 1
+            norm = self._normalize_csv_cell(raw)
+            try:
+                src_name = (
+                    norm.get("source_name")
+                    or norm.get("source")
+                    or norm.get("lead_source")
+                    or ""
+                )
+                source_id = await self.resolve_source_id_by_name(src_name)
+                lead_data = self._lead_create_from_csv_row(norm, source_id)
+                if len(lead_data.full_name) < 2 or len(lead_data.phone) < 8:
+                    failed += 1
+                    errors.append(f"Row {row_num}: full_name and phone (min 8 chars) are required")
+                    continue
+                await self.create_lead(lead_data, current_user)
+                created += 1
+            except BadRequestException as e:
+                failed += 1
+                detail = e.detail if isinstance(e.detail, str) else str(e.detail)
+                errors.append(f"Row {row_num}: {detail}")
+            except Exception as e:
+                failed += 1
+                errors.append(f"Row {row_num}: {e!s}")
+
+        return created, failed, errors[:50]
 
     async def create_lead(
         self,
@@ -130,6 +289,22 @@ class LeadService:
         elif assigned_to is None:
             assigned_to = await self._get_next_assignee(current_user)
 
+        team_id = lead_data.team_id
+        if current_user.role == UserRole.MANAGER:
+            if team_id is not None and team_id != current_user.team_id:
+                raise PermissionDeniedException("Invalid team for this lead")
+            if team_id is None:
+                team_id = current_user.team_id
+        if current_user.role == UserRole.AGENT:
+            team_id = team_id or current_user.team_id
+        if assigned_to:
+            assignee_row = await self.db.execute(
+                select(User).where(User.id == assigned_to)
+            )
+            assignee = assignee_row.scalar_one_or_none()
+            if team_id is None and assignee is not None:
+                team_id = assignee.team_id
+
         new_lead = Lead(
             full_name=lead_data.full_name,
             phone=lead_data.phone,
@@ -137,6 +312,7 @@ class LeadService:
             whatsapp_number=lead_data.whatsapp_number,
             source_id=lead_data.source_id,
             assigned_to=assigned_to,
+            team_id=team_id,
             custom_fields=lead_data.custom_fields,
             notes=lead_data.notes,
             status=LeadStatus.NEW,
@@ -225,6 +401,12 @@ class LeadService:
             lead.custom_fields = lead_data.custom_fields
         if lead_data.notes is not None:
             lead.notes = lead_data.notes
+        if lead_data.team_id is not None:
+            if current_user.role == UserRole.MANAGER and lead_data.team_id != current_user.team_id:
+                raise PermissionDeniedException("Invalid team for this lead")
+            if current_user.role == UserRole.AGENT:
+                raise PermissionDeniedException("Agents cannot change team routing")
+            lead.team_id = lead_data.team_id
 
         await self.db.commit()
         return await self.get_lead_by_id(lead_id, current_user, include_relations=True)
@@ -316,6 +498,7 @@ class LeadService:
 
         old_assignee_id = lead.assigned_to
         lead.assigned_to = assign_data.assigned_to
+        lead.team_id = assignee.team_id
 
         activity = Activity(
             lead_id=lead.id,

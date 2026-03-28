@@ -17,6 +17,7 @@ const ActivitiesPage = lazy(() => import("@/pages/ActivitiesPage"));
 const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage"));
 const AgentPerformancePage = lazy(() => import("@/pages/reports/AgentPerformancePage"));
 const MarketingROIPage = lazy(() => import("@/pages/reports/MarketingROIPage"));
+const TeamTasksPage = lazy(() => import("@/pages/team/TeamTasksPage"));
 const LeaderboardPage = lazy(() => import("@/pages/LeaderboardPage"));
 const UsersPage = lazy(() => import("@/pages/admin/UsersPage"));
 const TeamsPage = lazy(() => import("@/pages/admin/TeamsPage"));
@@ -72,6 +73,14 @@ export default function App() {
           <Route path="reports/agent-performance" element={<AgentPerformancePage />} />
           <Route path="reports/agent/:id" element={<AgentPerformancePage />} />
           <Route path="reports/marketing-roi" element={<MarketingROIPage />} />
+          <Route
+            path="team/tasks"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+                <TeamTasksPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="admin/users"
             element={
