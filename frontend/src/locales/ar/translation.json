@@ -23,7 +23,8 @@
     "matching": "المطابقة",
     "leaderboard": "لوحة المتصدرين",
     "gamification": "النقاط والمستويات",
-    "teamTasks": "مهام الفريق"
+    "teamTasks": "مهام الفريق",
+    "mainNavigation": "التنقل الرئيسي"
   },
   "notifications": {
     "title": "الإشعارات",
@@ -84,6 +85,7 @@
     "page": "صفحة",
     "darkMode": "الوضع الداكن",
     "lightMode": "الوضع الفاتح",
+    "closeMenu": "إغلاق القائمة",
     "language": "اللغة",
     "profile": "الملف الشخصي",
     "required": "مطلوب",

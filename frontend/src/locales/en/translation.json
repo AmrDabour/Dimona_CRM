@@ -23,7 +23,8 @@
     "matching": "Matching",
     "leaderboard": "Leaderboard",
     "gamification": "Points & Tiers",
-    "teamTasks": "Team tasks"
+    "teamTasks": "Team tasks",
+    "mainNavigation": "Main navigation"
   },
   "notifications": {
     "title": "Notifications",
@@ -86,6 +87,7 @@
     "page": "Page",
     "darkMode": "Dark Mode",
     "lightMode": "Light Mode",
+    "closeMenu": "Close menu",
     "language": "Language",
     "profile": "Profile",
     "required": "Required",
