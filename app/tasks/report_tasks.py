@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, Any
 import json
 
-from app.tasks import celery_app
+from app.tasks import celery_app, run_async
 from app.database import AsyncSessionLocal
 from app.core.redis import redis_client
 
@@ -11,7 +11,7 @@ from app.core.redis import redis_client
 @celery_app.task(name="app.tasks.report_tasks.generate_daily_report")
 def generate_daily_report():
     """Generate daily performance report."""
-    asyncio.run(_generate_daily_report())
+    run_async(_generate_daily_report())
 
 
 async def _generate_daily_report():
@@ -73,7 +73,7 @@ async def _generate_daily_report():
 @celery_app.task(name="app.tasks.report_tasks.generate_agent_performance_report")
 def generate_agent_performance_report(agent_id: str):
     """Generate performance report for a specific agent."""
-    asyncio.run(_generate_agent_performance_report(agent_id))
+    run_async(_generate_agent_performance_report(agent_id))
 
 
 async def _generate_agent_performance_report(agent_id: str):
@@ -147,7 +147,7 @@ async def _generate_agent_performance_report(agent_id: str):
 @celery_app.task(name="app.tasks.report_tasks.cache_pipeline_stats")
 def cache_pipeline_stats():
     """Cache pipeline statistics for quick dashboard access."""
-    asyncio.run(_cache_pipeline_stats())
+    run_async(_cache_pipeline_stats())
 
 
 async def _cache_pipeline_stats():

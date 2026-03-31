@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.tasks import celery_app
+from app.tasks import celery_app, run_async
 from app.database import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ def send_transactional_email(
 @celery_app.task(name="app.tasks.notification_tasks.dispatch_activity_reminders")
 def dispatch_activity_reminders():
     """Create in-app notifications ~5 minutes before scheduled activities start."""
-    asyncio.run(_dispatch_activity_reminders())
+    run_async(_dispatch_activity_reminders())
 
 
 async def _dispatch_activity_reminders():
@@ -145,7 +145,7 @@ async def _dispatch_activity_reminders():
 @celery_app.task(name="app.tasks.notification_tasks.check_overdue_activities")
 def check_overdue_activities():
     """Check for overdue activities and notify agents."""
-    asyncio.run(_check_overdue_activities())
+    run_async(_check_overdue_activities())
 
 
 async def _check_overdue_activities():
@@ -178,7 +178,7 @@ async def _check_overdue_activities():
 @celery_app.task(name="app.tasks.notification_tasks.send_followup_reminder")
 def send_followup_reminder(activity_id: str, user_id: str):
     """Send a follow-up reminder notification."""
-    asyncio.run(_send_followup_reminder(activity_id, user_id))
+    run_async(_send_followup_reminder(activity_id, user_id))
 
 
 async def _send_followup_reminder(activity_id: str, user_id: str):
@@ -202,7 +202,7 @@ async def _send_followup_reminder(activity_id: str, user_id: str):
 @celery_app.task(name="app.tasks.notification_tasks.notify_new_lead_assignment")
 def notify_new_lead_assignment(lead_id: str, agent_id: str):
     """Notify agent of new lead assignment."""
-    asyncio.run(_notify_new_lead_assignment(lead_id, agent_id))
+    run_async(_notify_new_lead_assignment(lead_id, agent_id))
 
 
 async def _notify_new_lead_assignment(lead_id: str, agent_id: str):
@@ -230,7 +230,7 @@ async def _notify_new_lead_assignment(lead_id: str, agent_id: str):
 @celery_app.task(name="app.tasks.notification_tasks.check_stuck_leads")
 def check_stuck_leads():
     """Check for leads stuck in a stage for too long (SLA monitoring)."""
-    asyncio.run(_check_stuck_leads())
+    run_async(_check_stuck_leads())
 
 
 async def _check_stuck_leads():
@@ -262,7 +262,7 @@ async def _check_stuck_leads():
 @celery_app.task(name="app.tasks.notification_tasks.run_daily_manager_task_schedules")
 def run_daily_manager_task_schedules():
     """Spawn manager recurring tasks for matching UTC weekdays (once per day)."""
-    asyncio.run(_run_daily_manager_task_schedules())
+    run_async(_run_daily_manager_task_schedules())
 
 
 async def _run_daily_manager_task_schedules():

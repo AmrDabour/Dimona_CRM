@@ -2,7 +2,7 @@ import asyncio
 from uuid import UUID
 from typing import Dict, Any
 
-from app.tasks import celery_app
+from app.tasks import celery_app, run_async
 from app.database import AsyncSessionLocal
 from app.services.whatsapp_service import whatsapp_service
 
@@ -10,7 +10,7 @@ from app.services.whatsapp_service import whatsapp_service
 @celery_app.task(name="app.tasks.webhook_tasks.process_facebook_lead")
 def process_facebook_lead_task(lead_data: Dict[str, Any]):
     """Async task to process Facebook Lead Ads webhook."""
-    asyncio.run(_process_facebook_lead(lead_data))
+    run_async(_process_facebook_lead(lead_data))
 
 
 async def _process_facebook_lead(lead_data: Dict[str, Any]):
@@ -71,7 +71,7 @@ async def _process_facebook_lead(lead_data: Dict[str, Any]):
 @celery_app.task(name="app.tasks.webhook_tasks.process_whatsapp_message")
 def process_whatsapp_message_task(message_data: Dict[str, Any]):
     """Async task to process WhatsApp incoming message."""
-    asyncio.run(_process_whatsapp_message(message_data))
+    run_async(_process_whatsapp_message(message_data))
 
 
 async def _process_whatsapp_message(message_data: Dict[str, Any]):
@@ -132,10 +132,10 @@ async def _process_whatsapp_message(message_data: Dict[str, Any]):
 @celery_app.task(name="app.tasks.webhook_tasks.send_whatsapp_message")
 def send_whatsapp_message_task(to: str, message: str):
     """Async task to send WhatsApp message."""
-    asyncio.run(whatsapp_service.send_text_message(to, message))
+    run_async(whatsapp_service.send_text_message(to, message))
 
 
 @celery_app.task(name="app.tasks.webhook_tasks.send_whatsapp_template")
 def send_whatsapp_template_task(to: str, template_name: str, language_code: str = "en"):
     """Async task to send WhatsApp template message."""
-    asyncio.run(whatsapp_service.send_template_message(to, template_name, language_code))
+    run_async(whatsapp_service.send_template_message(to, template_name, language_code))

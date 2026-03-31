@@ -6,11 +6,20 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from app.config import settings
 from app.api.router import api_router
 from app.core.redis import redis_client
 
 logger = logging.getLogger(__name__)
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.app_env,
+        traces_sample_rate=1.0,  # capture 100% of transactions for tracing
+        profiles_sample_rate=1.0,
+    )
 
 
 async def _weekly_compliance_loop() -> None:

@@ -46,3 +46,6 @@ pytest-asyncio>=0.24.0
 # Utilities
 python-dateutil>=2.9.0
 pytz>=2024.2
+
+# Sentry
+sentry-sdk[fastapi,celery]>=2.0.0

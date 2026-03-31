@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_name: str = "Dimora CRM"
     app_env: str = "development"
     debug: bool = True
+    sentry_dsn: Optional[str] = None
     secret_key: str = "change-me-in-production"
     api_v1_prefix: str = "/api/v1"
 

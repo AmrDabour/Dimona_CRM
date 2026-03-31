@@ -1,7 +1,27 @@
+import asyncio
 from celery import Celery
 from celery.schedules import crontab
+import sentry_sdk
+from sentry_sdk.integrations.celery import CeleryIntegration
 
 from app.config import settings
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.app_env,
+        traces_sample_rate=1.0,
+        integrations=[CeleryIntegration()],
+    )
+
+_loop = None
+
+def run_async(coro):
+    global _loop
+    if _loop is None:
+        _loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(_loop)
+    return _loop.run_until_complete(coro)
 
 celery_app = Celery(
     "dimora_crm",
