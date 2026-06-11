@@ -18,6 +18,7 @@ export interface UserResponse {
   phone?: string;
   role: UserRole;
   team_id?: string;
+  branch_id?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -30,6 +31,7 @@ export interface UserCreate {
   password: string;
   role: UserRole;
   team_id?: string;
+  branch_id?: string;
 }
 
 export interface UserUpdate {
@@ -38,5 +40,6 @@ export interface UserUpdate {
   phone?: string;
   role?: UserRole;
   team_id?: string;
+  branch_id?: string;
   is_active?: boolean;
 }

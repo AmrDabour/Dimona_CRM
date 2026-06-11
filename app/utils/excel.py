@@ -48,12 +48,12 @@ class ExcelService:
 
     async def import_leads_from_excel(
         self,
-        file: UploadFile,
+        content: bytes,
         default_source_id: Optional[UUID] = None,
         default_assigned_to: Optional[UUID] = None,
+        task=None,  # optional Celery task for updating progress
     ) -> Dict[str, Any]:
-        """Import leads from Excel file."""
-        content = await file.read()
+        """Import leads from Excel file content."""
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
 
         required_columns = ["Full Name", "Phone"]
@@ -64,8 +64,17 @@ class ExcelService:
         created = 0
         skipped = 0
         errors = []
+        total_rows = len(df)
 
         for idx, row in df.iterrows():
+            if task and idx % 50 == 0:
+                task.update_state(state='PROGRESS', meta={
+                    'current': idx,
+                    'total': total_rows,
+                    'created': created,
+                    'skipped': skipped,
+                    'errors': len(errors)
+                })
             try:
                 full_name = str(row.get("Full Name", "")).strip()
                 phone = str(row.get("Phone", "")).strip()
@@ -158,7 +167,7 @@ class ExcelService:
 
     async def import_units_from_excel(
         self,
-        file: UploadFile,
+        content: bytes,
         project_id: UUID,
     ) -> Dict[str, Any]:
         """Import units from Excel file into a project."""
@@ -169,7 +178,6 @@ class ExcelService:
         if not project:
             raise BadRequestException("Project not found")
 
-        content = await file.read()
         df = pd.read_excel(io.BytesIO(content), engine="openpyxl")
 
         required_columns = ["Unit Number", "Property Type", "Price", "Area (sqm)", "Bedrooms", "Bathrooms", "Finishing"]

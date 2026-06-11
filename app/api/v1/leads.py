@@ -68,6 +68,46 @@ async def list_leads(
 MAX_CSV_IMPORT_BYTES = 5 * 1024 * 1024
 
 
+@router.get("/export/excel")
+async def export_leads_excel_async(
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN]))],
+    status: Optional[LeadStatus] = None,
+    source_id: Optional[UUID] = None,
+    assigned_to: Optional[UUID] = None,
+    search: Optional[str] = None,
+):
+    """Start leads export to Excel file in background."""
+    from app.tasks.lead_tasks import export_leads_task
+    
+    task = export_leads_task.delay(
+        str(current_user.id),
+        status.value if status else None,
+        str(source_id) if source_id else None,
+        str(assigned_to) if assigned_to else None,
+        search
+    )
+    return {"message": "Export started in background", "task_id": task.id}
+
+@router.get("/export/status/{task_id}")
+async def get_export_status(
+    task_id: str,
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN]))],
+):
+    from app.tasks import celery_app
+    task_result = celery_app.AsyncResult(task_id)
+    
+    response = {
+        "task_id": task_id,
+        "status": task_result.status,
+    }
+    
+    if task_result.status == 'SUCCESS':
+        response["result"] = task_result.result
+    elif task_result.status == 'FAILURE':
+        response["error"] = str(task_result.info)
+        
+    return response
+
 @router.get("/export")
 async def export_leads_csv(
     current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN]))],
@@ -96,9 +136,58 @@ async def export_leads_csv(
     )
 
 
+@router.post("/import/excel")
+async def import_leads_excel_async(
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
+    file: UploadFile = File(...),
+):
+    """Import leads from Excel file in background."""
+    if not file.filename or not (file.filename.lower().endswith(".xlsx") or file.filename.lower().endswith(".xls")):
+        raise BadRequestException("Please upload an Excel (.xlsx or .xls) file")
+    
+    import os
+    import uuid
+    from app.tasks.lead_tasks import import_leads_task
+    
+    upload_dir = os.path.join("app", "uploads")
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_id = str(uuid.uuid4())
+    ext = ".xlsx"
+    file_path = os.path.join(upload_dir, f"import_{file_id}{ext}")
+    
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+        
+    task = import_leads_task.delay(file_path, None, str(current_user.id))
+    return {"message": "Import started in background", "task_id": task.id}
+
+@router.get("/import/status/{task_id}")
+async def get_import_status(
+    task_id: str,
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
+):
+    from app.tasks import celery_app
+    task_result = celery_app.AsyncResult(task_id)
+    
+    response = {
+        "task_id": task_id,
+        "status": task_result.status,
+    }
+    
+    if task_result.status == 'PROGRESS':
+        response["progress"] = task_result.info
+    elif task_result.status == 'SUCCESS':
+        response["result"] = task_result.result
+    elif task_result.status == 'FAILURE':
+        response["error"] = str(task_result.info)
+        
+    return response
+
 @router.post("/import", response_model=LeadImportResult)
 async def import_leads_csv(
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
 ):
@@ -182,7 +271,7 @@ async def update_lead_status(
 async def assign_lead(
     lead_id: UUID,
     assign_data: LeadAssign,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """

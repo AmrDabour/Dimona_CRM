@@ -10,11 +10,13 @@ class TeamBase(BaseModel):
 
 class TeamCreate(TeamBase):
     manager_id: Optional[UUID] = None
+    branch_id: Optional[UUID] = None
 
 
 class TeamUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
     manager_id: Optional[UUID] = None
+    branch_id: Optional[UUID] = None
 
 
 class TeamMemberResponse(BaseModel):
@@ -31,5 +33,6 @@ class TeamResponse(TeamBase):
 
     id: UUID
     manager_id: Optional[UUID]
+    branch_id: Optional[UUID] = None
     created_at: datetime
     members: Optional[List[TeamMemberResponse]] = None

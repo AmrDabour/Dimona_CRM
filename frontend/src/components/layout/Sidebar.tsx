@@ -197,7 +197,7 @@ export function Sidebar() {
         {
           to: "/reports/agent-performance",
           label: t("nav.agentPerformance"),
-          roles: ["admin", "manager"],
+          roles: ["admin", "branch_manager", "sales_manager"],
         },
         {
           to: "/reports/marketing-roi",
@@ -207,7 +207,7 @@ export function Sidebar() {
         {
           to: "/team/tasks",
           label: t("nav.teamTasks"),
-          roles: ["admin", "manager"],
+          roles: ["admin", "branch_manager", "sales_manager"],
         },
       ],
     },
@@ -218,6 +218,7 @@ export function Sidebar() {
       roles: ["admin"],
       items: [
         { to: "/admin/users", label: t("nav.users") },
+        { to: "/admin/branches", label: t("nav.branches", "Branches") },
         { to: "/admin/teams", label: t("nav.teams") },
         { to: "/admin/gamification", label: t("nav.gamification") },
         { to: "/admin/settings", label: t("nav.settings") },

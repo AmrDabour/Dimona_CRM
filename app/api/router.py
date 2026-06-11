@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, users, teams, team, leads, activities, inventory, pipeline, matching, reports, webhooks, integrations, gamification, notifications
+from app.api.v1 import auth, users, teams, team, branches, leads, activities, inventory, pipeline, matching, reports, webhooks, integrations, gamification, notifications
 
 api_router = APIRouter()
 
@@ -11,6 +11,7 @@ api_router.include_router(auth.router)
 api_router.include_router(users.router)
 api_router.include_router(teams.router)
 api_router.include_router(team.router)
+api_router.include_router(branches.router)
 
 # Lead Management
 api_router.include_router(leads.router)

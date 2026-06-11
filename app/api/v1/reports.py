@@ -44,10 +44,10 @@ async def get_agent_performance(
     - Manager: Can view team members' reports
     - Admin: Can view any agent's report
     """
-    if current_user.role == UserRole.AGENT and current_user.id != agent_id:
+    if current_user.role == UserRole.SALES_REP and current_user.id != agent_id:
         raise PermissionDeniedException("You can only view your own performance report")
 
-    if current_user.role == UserRole.MANAGER:
+    if current_user.role == UserRole.SALES_MANAGER:
         from sqlalchemy import select
         from app.models.user import User as UserModel
 
@@ -77,7 +77,7 @@ async def get_my_performance(
 @router.get("/team-performance/{team_id}")
 async def get_team_performance(
     team_id: UUID,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
@@ -87,7 +87,7 @@ async def get_team_performance(
     - Manager: Can only view own team
     - Admin: Can view any team
     """
-    if current_user.role == UserRole.MANAGER and current_user.team_id != team_id:
+    if current_user.role == UserRole.SALES_MANAGER and current_user.team_id != team_id:
         raise PermissionDeniedException("You can only view your own team's report")
 
     report_service = ReportService(db)
@@ -96,7 +96,7 @@ async def get_team_performance(
 
 @router.get("/my-team-performance")
 async def get_my_team_performance(
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
@@ -142,9 +142,9 @@ async def get_conversion_funnel(
 
     base_where = [Lead.is_deleted == False, Lead.created_at >= start_date]
 
-    if current_user.role == UserRole.AGENT:
+    if current_user.role == UserRole.SALES_REP:
         base_where.append(Lead.assigned_to == current_user.id)
-    elif current_user.role == UserRole.MANAGER:
+    elif current_user.role == UserRole.SALES_MANAGER:
         members_query = select(User.id).where(
             User.team_id == current_user.team_id,
             User.is_deleted == False,
@@ -208,9 +208,9 @@ async def get_activity_summary(
 
     base_where = [Activity.created_at >= start_date]
 
-    if current_user.role == UserRole.AGENT:
+    if current_user.role == UserRole.SALES_REP:
         base_where.append(Activity.user_id == current_user.id)
-    elif current_user.role == UserRole.MANAGER:
+    elif current_user.role == UserRole.SALES_MANAGER:
         members_query = select(User.id).where(
             User.team_id == current_user.team_id,
             User.is_deleted == False,

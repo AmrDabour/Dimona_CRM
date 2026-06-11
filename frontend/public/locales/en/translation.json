@@ -328,8 +328,9 @@
   },
   "roles": {
     "admin": "Admin",
-    "manager": "Manager",
-    "agent": "Agent"
+    "branch_manager": "Branch Manager",
+    "sales_manager": "Sales Manager",
+    "sales_rep": "Sales Agent"
   },
   "gamification": {
     "myPoints": "My Points",

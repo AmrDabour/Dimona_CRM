@@ -26,10 +26,10 @@ class LeadRequirementService:
         if not lead:
             raise NotFoundException("Lead")
 
-        if current_user.role == UserRole.AGENT and lead.assigned_to != current_user.id:
+        if current_user.role == UserRole.SALES_REP and lead.assigned_to != current_user.id:
             raise PermissionDeniedException("You don't have access to this lead")
 
-        if current_user.role == UserRole.MANAGER:
+        if current_user.role == UserRole.SALES_MANAGER:
             if lead.assigned_user and lead.assigned_user.team_id != current_user.team_id:
                 raise PermissionDeniedException("You don't have access to this lead")
 

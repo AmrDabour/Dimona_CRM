@@ -21,6 +21,7 @@ const TeamTasksPage = lazy(() => import("@/pages/team/TeamTasksPage"));
 const LeaderboardPage = lazy(() => import("@/pages/LeaderboardPage"));
 const UsersPage = lazy(() => import("@/pages/admin/UsersPage"));
 const TeamsPage = lazy(() => import("@/pages/admin/TeamsPage"));
+const BranchesPage = lazy(() => import("@/pages/admin/BranchesPage"));
 const SettingsPage = lazy(() => import("@/pages/admin/SettingsPage"));
 const GamificationSettingsPage = lazy(() => import("@/pages/admin/GamificationSettingsPage"));
 
@@ -76,7 +77,7 @@ export default function App() {
           <Route
             path="team/tasks"
             element={
-              <ProtectedRoute allowedRoles={["admin", "manager"]}>
+              <ProtectedRoute allowedRoles={["admin", "branch_manager", "sales_manager"]}>
                 <TeamTasksPage />
               </ProtectedRoute>
             }
@@ -94,6 +95,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
                 <TeamsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/branches"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <BranchesPage />
               </ProtectedRoute>
             }
           />

@@ -62,7 +62,7 @@ async def list_developers(
 @developer_router.post("", response_model=DeveloperResponse)
 async def create_developer(
     data: DeveloperCreate,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new developer (Admin/Manager only)."""
@@ -142,7 +142,7 @@ async def list_projects(
 @project_router.post("", response_model=ProjectResponse)
 async def create_project(
     data: ProjectCreate,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new project (Admin/Manager only)."""
@@ -245,7 +245,7 @@ async def list_units(
 @unit_router.post("", response_model=UnitResponse)
 async def create_unit(
     data: UnitCreate,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new unit (Admin/Manager only)."""
@@ -293,7 +293,7 @@ async def delete_unit(
 async def add_unit_image(
     unit_id: UUID,
     image_data: UnitImageCreate,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Add image to a unit."""
@@ -305,7 +305,7 @@ async def add_unit_image(
 async def upload_unit_image(
     unit_id: UUID,
     file: Annotated[UploadFile, File()],
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     sort_order: int = 0,
 ):

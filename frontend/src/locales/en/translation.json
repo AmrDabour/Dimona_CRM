@@ -18,6 +18,7 @@
     "profile": "Profile",
     "admin": "Admin",
     "users": "Users",
+    "branches": "Branches",
     "teams": "Teams",
     "settings": "Settings",
     "matching": "Matching",
@@ -338,6 +339,7 @@
   },
   "admin": {
     "users": "User Management",
+    "branches": "Branch Management",
     "teams": "Team Management",
     "settings": "Settings",
     "createUser": "Create User",
@@ -356,8 +358,9 @@
   },
   "roles": {
     "admin": "Admin",
-    "manager": "Manager",
-    "agent": "Agent"
+    "branch_manager": "Branch Manager",
+    "sales_manager": "Sales Manager",
+    "sales_rep": "Sales Representative"
   },
   "gamification": {
     "myPoints": "My Points",

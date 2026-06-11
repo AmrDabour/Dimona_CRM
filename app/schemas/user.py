@@ -14,8 +14,9 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8, max_length=100)
-    role: UserRole = UserRole.AGENT
+    role: UserRole = UserRole.SALES_REP
     team_id: Optional[UUID] = None
+    branch_id: Optional[UUID] = None
 
 
 class UserUpdate(BaseModel):
@@ -24,6 +25,7 @@ class UserUpdate(BaseModel):
     phone: Optional[str] = Field(None, max_length=20)
     role: Optional[UserRole] = None
     team_id: Optional[UUID] = None
+    branch_id: Optional[UUID] = None
     is_active: Optional[bool] = None
 
 
@@ -38,6 +40,7 @@ class UserResponse(UserBase):
     id: UUID
     role: UserRole
     team_id: Optional[UUID]
+    branch_id: Optional[UUID] = None
     is_active: bool
     created_at: datetime
     updated_at: datetime

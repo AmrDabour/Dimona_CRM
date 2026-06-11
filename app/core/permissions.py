@@ -7,8 +7,9 @@ from app.core.exceptions import PermissionDeniedException
 
 class UserRole(str, Enum):
     ADMIN = "admin"
-    MANAGER = "manager"
-    AGENT = "agent"
+    BRANCH_MANAGER = "branch_manager"
+    SALES_MANAGER = "sales_manager"
+    SALES_REP = "sales_rep"
 
 
 class Permission(str, Enum):
@@ -73,7 +74,26 @@ ROLE_PERMISSIONS: dict[UserRole, List[Permission]] = {
         Permission.SETTINGS_MANAGE,
         Permission.INTEGRATIONS_MANAGE,
     ],
-    UserRole.MANAGER: [
+    UserRole.BRANCH_MANAGER: [
+        Permission.USER_READ,
+        Permission.USER_CREATE,
+        Permission.USER_UPDATE,
+        Permission.LEAD_CREATE,
+        Permission.LEAD_READ_OWN,
+        Permission.LEAD_READ_TEAM,
+        Permission.LEAD_READ_ALL,
+        Permission.LEAD_UPDATE,
+        Permission.LEAD_ASSIGN,
+        Permission.LEAD_IMPORT,
+        Permission.LEAD_EXPORT,
+        Permission.INVENTORY_READ,
+        Permission.INVENTORY_CREATE,
+        Permission.INVENTORY_UPDATE,
+        Permission.REPORT_OWN,
+        Permission.REPORT_TEAM,
+        Permission.REPORT_ALL,
+    ],
+    UserRole.SALES_MANAGER: [
         # Team management, no export, no delete inventory
         Permission.USER_READ,
         Permission.LEAD_CREATE,
@@ -87,7 +107,7 @@ ROLE_PERMISSIONS: dict[UserRole, List[Permission]] = {
         Permission.REPORT_OWN,
         Permission.REPORT_TEAM,
     ],
-    UserRole.AGENT: [
+    UserRole.SALES_REP: [
         # Own leads only, read-only inventory, no export/import
         Permission.LEAD_CREATE,
         Permission.LEAD_READ_OWN,

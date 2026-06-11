@@ -18,6 +18,7 @@
     "profile": "الملف الشخصي",
     "admin": "الإدارة",
     "users": "المستخدمين",
+    "branches": "الفروع",
     "teams": "الفرق",
     "settings": "الإعدادات",
     "matching": "المطابقة",
@@ -338,6 +339,7 @@
   },
   "admin": {
     "users": "إدارة المستخدمين",
+    "branches": "إدارة الفروع",
     "teams": "إدارة الفرق",
     "settings": "الإعدادات",
     "createUser": "إنشاء مستخدم",
@@ -356,8 +358,9 @@
   },
   "roles": {
     "admin": "مدير النظام",
-    "manager": "مدير المبيعات",
-    "agent": "مندوب مبيعات"
+    "branch_manager": "مدير فرع",
+    "sales_manager": "مدير مبيعات",
+    "sales_rep": "مندوب مبيعات"
   },
   "gamification": {
     "myPoints": "نقاطي",

@@ -47,12 +47,12 @@ class TeamActivityService:
         Admin: all teams, optional filter_team_id.
         Manager: own team only.
         """
-        if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
+        if current_user.role not in (UserRole.ADMIN, UserRole.SALES_MANAGER):
             raise PermissionDeniedException("Team activities require manager or admin role")
 
         lead_scope: object = sql_true()
 
-        if current_user.role == UserRole.MANAGER:
+        if current_user.role == UserRole.SALES_MANAGER:
             if not current_user.team_id:
                 return [], 0
             res = await self.db.execute(

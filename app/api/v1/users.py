@@ -51,23 +51,27 @@ async def change_password(
 
 @router.get("", response_model=PaginatedResponse[UserResponse])
 async def list_users(
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     pagination: Annotated[PaginationParams, Depends()],
     team_id: Optional[UUID] = None,
+    branch_id: Optional[UUID] = None,
     role: Optional[UserRole] = None,
     is_active: Optional[bool] = None,
 ):
-    """List all users (Admin: all, Manager: team only)."""
+    """List all users (Admin: all, Branch Manager: branch only, Sales Manager: team only)."""
     user_service = UserService(db)
 
-    if current_user.role == UserRole.MANAGER:
+    if current_user.role == UserRole.SALES_MANAGER:
         team_id = current_user.team_id
+    elif current_user.role == UserRole.BRANCH_MANAGER:
+        branch_id = current_user.branch_id
 
     users, total = await user_service.list_users(
         page=pagination.page,
         page_size=pagination.page_size,
         team_id=team_id,
+        branch_id=branch_id,
         role=role,
         is_active=is_active,
     )
@@ -97,14 +101,14 @@ async def create_user(
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: UUID,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get user by ID."""
     user_service = UserService(db)
     user = await user_service.get_user_by_id(user_id)
 
-    if current_user.role == UserRole.MANAGER and user.team_id != current_user.team_id:
+    if current_user.role == UserRole.SALES_MANAGER and user.team_id != current_user.team_id:
         from app.core.exceptions import PermissionDeniedException
         raise PermissionDeniedException("You can only view users in your team")
 

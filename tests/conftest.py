@@ -105,7 +105,7 @@ async def test_manager(db_session: AsyncSession, test_team: Team) -> User:
         email="manager@test.com",
         full_name="Test Manager",
         hashed_password=get_password_hash("password123"),
-        role=UserRole.MANAGER,
+        role=UserRole.SALES_MANAGER,
         team_id=test_team.id,
         is_active=True,
     )
@@ -122,7 +122,7 @@ async def test_agent(db_session: AsyncSession, test_team: Team) -> User:
         email="agent@test.com",
         full_name="Test Agent",
         hashed_password=get_password_hash("password123"),
-        role=UserRole.AGENT,
+        role=UserRole.SALES_REP,
         team_id=test_team.id,
         is_active=True,
     )

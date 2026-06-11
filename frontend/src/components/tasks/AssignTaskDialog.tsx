@@ -149,11 +149,13 @@ export function AssignTaskDialog({ open, onOpenChange, leadId }: AssignTaskDialo
     if (!users || !currentUser) return [];
     return users.filter((u) => {
       if (!u.is_active || u.id === currentUser.id) return false;
-      if (u.role !== "agent") return false;
-      if (currentUser.role === "manager") {
-        return !!currentUser.team_id && u.team_id === currentUser.team_id;
+      if (currentUser.role === "sales_manager") {
+        return u.role === "sales_rep" && !!currentUser.team_id && u.team_id === currentUser.team_id;
       }
-      return currentUser.role === "admin";
+      if (currentUser.role === "branch_manager") {
+        return u.role === "sales_rep" || u.role === "sales_manager";
+      }
+      return currentUser.role === "admin" && u.role !== "admin";
     });
   }, [users, currentUser]);
 

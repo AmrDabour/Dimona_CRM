@@ -31,6 +31,7 @@ celery_app = Celery(
         "app.tasks.webhook_tasks",
         "app.tasks.notification_tasks",
         "app.tasks.report_tasks",
+        "app.tasks.lead_tasks",
     ],
 )
 

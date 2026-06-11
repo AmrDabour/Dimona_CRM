@@ -93,7 +93,7 @@ async def test_list_leads_rbac_agent(
         email="other_agent@test.com",
         full_name="Other Agent",
         hashed_password="fakehash",
-        role=UserRole.AGENT,
+        role=UserRole.SALES_REP,
         is_active=True,
     )
     db_session.add(other_agent)

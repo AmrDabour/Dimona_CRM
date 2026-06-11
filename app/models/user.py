@@ -23,12 +23,17 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
         SQLEnum(UserRole, name="user_role", values_callable=lambda e: [x.value for x in e]),
-        default=UserRole.AGENT,
+        default=UserRole.SALES_REP,
         nullable=False,
     )
     team_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("teams.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    branch_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("branches.id", ondelete="SET NULL"),
         nullable=True,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -38,6 +43,16 @@ class User(Base, TimestampMixin, SoftDeleteMixin):
         "Team",
         back_populates="members",
         foreign_keys=[team_id],
+    )
+    branch: Mapped["Branch | None"] = relationship(
+        "Branch",
+        back_populates="users",
+        foreign_keys=[branch_id],
+    )
+    managed_branch: Mapped["Branch | None"] = relationship(
+        "Branch",
+        back_populates="manager",
+        foreign_keys="Branch.manager_id",
     )
     assigned_leads: Mapped[list["Lead"]] = relationship(
         "Lead",

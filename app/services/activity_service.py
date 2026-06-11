@@ -52,12 +52,19 @@ class ActivityService:
             return True
         if activity.assigned_by_id == current_user.id:
             return True
-        if current_user.role == UserRole.MANAGER and activity.user_id:
+        if current_user.role == UserRole.SALES_MANAGER and activity.user_id:
             r = await self.db.execute(
                 select(User).where(User.id == activity.user_id, User.is_deleted == False)
             )
             assignee = r.scalar_one_or_none()
             if assignee and current_user.team_id and assignee.team_id == current_user.team_id:
+                return True
+        if current_user.role == UserRole.BRANCH_MANAGER and activity.user_id:
+            r = await self.db.execute(
+                select(User).where(User.id == activity.user_id, User.is_deleted == False)
+            )
+            assignee = r.scalar_one_or_none()
+            if assignee and current_user.branch_id and assignee.branch_id == current_user.branch_id:
                 return True
         return False
 
@@ -236,8 +243,8 @@ class ActivityService:
         data: ManagerTaskAssign,
         current_user: User,
     ) -> ManagerTaskAssignResult:
-        if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
-            raise PermissionDeniedException("Only admins and managers can assign tasks")
+        if current_user.role not in (UserRole.ADMIN, UserRole.SALES_MANAGER, UserRole.BRANCH_MANAGER):
+            raise PermissionDeniedException("Only admins, branch and sales managers can assign tasks")
 
         result = await self.db.execute(
             select(User).where(
@@ -251,10 +258,15 @@ class ActivityService:
         if not assignee.is_active:
             raise BadRequestException("Assignee is inactive")
 
-        if current_user.role == UserRole.MANAGER:
+        if current_user.role == UserRole.SALES_MANAGER:
             if not current_user.team_id or assignee.team_id != current_user.team_id:
                 raise PermissionDeniedException(
                     "You can only assign tasks to members of your team"
+                )
+        elif current_user.role == UserRole.BRANCH_MANAGER:
+            if not current_user.branch_id or assignee.branch_id != current_user.branch_id:
+                raise PermissionDeniedException(
+                    "You can only assign tasks to members of your branch"
                 )
 
         lead_id = data.lead_id
@@ -323,7 +335,7 @@ class ActivityService:
     async def list_manager_task_schedules(
         self, current_user: User
     ) -> List[ManagerTaskScheduleResponse]:
-        if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
+        if current_user.role not in (UserRole.ADMIN, UserRole.SALES_MANAGER):
             raise PermissionDeniedException("Not allowed")
 
         q = (
@@ -332,7 +344,7 @@ class ActivityService:
             .options(selectinload(ManagerTaskSchedule.assignee))
             .order_by(ManagerTaskSchedule.created_at.desc())
         )
-        if current_user.role == UserRole.MANAGER:
+        if current_user.role == UserRole.SALES_MANAGER:
             q = q.where(ManagerTaskSchedule.assigned_by_id == current_user.id)
 
         res = await self.db.execute(q)
@@ -362,13 +374,13 @@ class ActivityService:
     async def cancel_manager_task_schedule(
         self, schedule_id: UUID, current_user: User
     ) -> None:
-        if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
+        if current_user.role not in (UserRole.ADMIN, UserRole.SALES_MANAGER):
             raise PermissionDeniedException("Not allowed")
         s = await self.db.get(ManagerTaskSchedule, schedule_id)
         if not s:
             raise NotFoundException("Schedule")
         if (
-            current_user.role == UserRole.MANAGER
+            current_user.role == UserRole.SALES_MANAGER
             and s.assigned_by_id != current_user.id
         ):
             raise PermissionDeniedException("You can only cancel your own schedules")
@@ -440,9 +452,9 @@ class ActivityService:
         return await self.get_activity_by_id(activity_id, current_user)
 
     async def _apply_pending_role_filter(self, query, current_user: User):
-        if current_user.role == UserRole.AGENT:
+        if current_user.role == UserRole.SALES_REP:
             return query.where(Activity.user_id == current_user.id)
-        if current_user.role == UserRole.MANAGER:
+        if current_user.role == UserRole.SALES_MANAGER:
             team_members = await self.db.execute(
                 select(User.id).where(
                     User.team_id == current_user.team_id,
@@ -450,6 +462,15 @@ class ActivityService:
                 )
             )
             member_ids = [m[0] for m in team_members.fetchall()]
+            return query.where(Activity.user_id.in_(member_ids))
+        if current_user.role == UserRole.BRANCH_MANAGER:
+            branch_members = await self.db.execute(
+                select(User.id).where(
+                    User.branch_id == current_user.branch_id,
+                    User.is_deleted == False,
+                )
+            )
+            member_ids = [m[0] for m in branch_members.fetchall()]
             return query.where(Activity.user_id.in_(member_ids))
         # ADMIN: no extra filter
         return query

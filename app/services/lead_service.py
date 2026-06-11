@@ -66,9 +66,9 @@ class LeadService:
             selectinload(Lead.assigned_user),
         )
 
-        if current_user.role == UserRole.AGENT:
+        if current_user.role == UserRole.SALES_REP:
             query = query.where(Lead.assigned_to == current_user.id)
-        elif current_user.role == UserRole.MANAGER:
+        elif current_user.role == UserRole.SALES_MANAGER:
             if not current_user.team_id:
                 query = query.where(sql_false())
             else:
@@ -88,6 +88,34 @@ class LeadService:
                     )
                 else:
                     query = query.where(unassigned_team)
+        elif current_user.role == UserRole.BRANCH_MANAGER:
+            if not current_user.branch_id:
+                query = query.where(sql_false())
+            else:
+                branch_users_query = select(User.id).where(
+                    User.branch_id == current_user.branch_id,
+                    User.is_deleted == False,
+                )
+                branch_users = await self.db.execute(branch_users_query)
+                branch_user_ids = [u[0] for u in branch_users.fetchall()]
+                
+                branch_teams_query = select(Team.id).where(
+                    Team.branch_id == current_user.branch_id,
+                    Team.is_deleted == False,
+                )
+                branch_teams = await self.db.execute(branch_teams_query)
+                branch_team_ids = [t[0] for t in branch_teams.fetchall()]
+                
+                conditions = []
+                if branch_user_ids:
+                    conditions.append(Lead.assigned_to.in_(branch_user_ids))
+                if branch_team_ids:
+                    conditions.append(and_(Lead.assigned_to.is_(None), Lead.team_id.in_(branch_team_ids)))
+                    
+                if conditions:
+                    query = query.where(or_(*conditions))
+                else:
+                    query = query.where(sql_false())
 
         if status:
             query = query.where(Lead.status == status)
@@ -284,18 +312,18 @@ class LeadService:
             raise BadRequestException("Lead with this phone number already exists")
 
         assigned_to = lead_data.assigned_to
-        if current_user.role == UserRole.AGENT:
+        if current_user.role == UserRole.SALES_REP:
             assigned_to = current_user.id
         elif assigned_to is None:
             assigned_to = await self._get_next_assignee(current_user)
 
         team_id = lead_data.team_id
-        if current_user.role == UserRole.MANAGER:
+        if current_user.role == UserRole.SALES_MANAGER:
             if team_id is not None and team_id != current_user.team_id:
                 raise PermissionDeniedException("Invalid team for this lead")
             if team_id is None:
                 team_id = current_user.team_id
-        if current_user.role == UserRole.AGENT:
+        if current_user.role == UserRole.SALES_REP:
             team_id = team_id or current_user.team_id
         if assigned_to:
             assignee_row = await self.db.execute(
@@ -349,7 +377,7 @@ class LeadService:
 
         agents_query = select(User).where(
             User.team_id == team_id,
-            User.role == UserRole.AGENT,
+            User.role == UserRole.SALES_REP,
             User.is_active == True,
             User.is_deleted == False,
         ).order_by(User.created_at)
@@ -402,9 +430,9 @@ class LeadService:
         if lead_data.notes is not None:
             lead.notes = lead_data.notes
         if lead_data.team_id is not None:
-            if current_user.role == UserRole.MANAGER and lead_data.team_id != current_user.team_id:
+            if current_user.role == UserRole.SALES_MANAGER and lead_data.team_id != current_user.team_id:
                 raise PermissionDeniedException("Invalid team for this lead")
-            if current_user.role == UserRole.AGENT:
+            if current_user.role == UserRole.SALES_REP:
                 raise PermissionDeniedException("Agents cannot change team routing")
             lead.team_id = lead_data.team_id
 
@@ -476,7 +504,7 @@ class LeadService:
         assign_data: LeadAssign,
         current_user: User,
     ) -> Lead:
-        if current_user.role == UserRole.AGENT:
+        if current_user.role == UserRole.SALES_REP:
             raise PermissionDeniedException("Agents cannot reassign leads")
 
         lead = await self.get_lead_by_id(lead_id, current_user, include_relations=True)
@@ -492,9 +520,12 @@ class LeadService:
         if not assignee:
             raise NotFoundException("Assignee user")
 
-        if current_user.role == UserRole.MANAGER:
+        if current_user.role == UserRole.SALES_MANAGER:
             if assignee.team_id != current_user.team_id:
                 raise PermissionDeniedException("You can only assign leads to your team members")
+        elif current_user.role == UserRole.BRANCH_MANAGER:
+            if assignee.branch_id != current_user.branch_id:
+                raise PermissionDeniedException("You can only assign leads to your branch members")
 
         old_assignee_id = lead.assigned_to
         lead.assigned_to = assign_data.assigned_to

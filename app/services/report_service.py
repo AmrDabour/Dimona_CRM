@@ -329,7 +329,8 @@ class ReportService:
         week_ago = today - timedelta(days=7)
 
         member_ids: list | None = None
-        if current_user.role == UserRole.MANAGER:
+        branch_team_ids: list | None = None
+        if current_user.role == UserRole.SALES_MANAGER:
             members_result = await self.db.execute(
                 select(User.id).where(
                     User.team_id == current_user.team_id,
@@ -337,12 +338,27 @@ class ReportService:
                 )
             )
             member_ids = [m[0] for m in members_result.fetchall()]
+        elif current_user.role == UserRole.BRANCH_MANAGER:
+            members_result = await self.db.execute(
+                select(User.id).where(
+                    User.branch_id == current_user.branch_id,
+                    User.is_deleted == False,
+                )
+            )
+            member_ids = [m[0] for m in members_result.fetchall()]
+            teams_result = await self.db.execute(
+                select(Team.id).where(
+                    Team.branch_id == current_user.branch_id,
+                    Team.is_deleted == False,
+                )
+            )
+            branch_team_ids = [t[0] for t in teams_result.fetchall()]
 
-        # Lead list scope: admin = all; agent = own; manager = team + unassigned routed to team
+        # Lead list scope: admin = all; agent = own; manager = team + unassigned routed to team; branch_manager = branch
         lead_scope: list = [Lead.is_deleted == False]
-        if current_user.role == UserRole.AGENT:
+        if current_user.role == UserRole.SALES_REP:
             lead_scope.append(Lead.assigned_to == current_user.id)
-        elif current_user.role == UserRole.MANAGER:
+        elif current_user.role == UserRole.SALES_MANAGER:
             if not current_user.team_id:
                 lead_scope.append(sql_false())
             else:
@@ -356,6 +372,19 @@ class ReportService:
                     )
                 else:
                     lead_scope.append(unassigned_team)
+        elif current_user.role == UserRole.BRANCH_MANAGER:
+            if not current_user.branch_id:
+                lead_scope.append(sql_false())
+            else:
+                conditions = []
+                if member_ids:
+                    conditions.append(Lead.assigned_to.in_(member_ids))
+                if branch_team_ids:
+                    conditions.append(and_(Lead.assigned_to.is_(None), Lead.team_id.in_(branch_team_ids)))
+                if conditions:
+                    lead_scope.append(or_(*conditions))
+                else:
+                    lead_scope.append(sql_false())
 
         status_result = await self.db.execute(
             select(Lead.status, func.count(Lead.id))
@@ -380,9 +409,9 @@ class ReportService:
 
         # Scheduled activities: agent = own; manager = all team members; admin = entire org
         activity_user_scope: list = []
-        if current_user.role == UserRole.AGENT:
+        if current_user.role == UserRole.SALES_REP:
             activity_user_scope.append(Activity.user_id == current_user.id)
-        elif current_user.role == UserRole.MANAGER:
+        elif current_user.role in (UserRole.SALES_MANAGER, UserRole.BRANCH_MANAGER):
             if member_ids:
                 activity_user_scope.append(Activity.user_id.in_(member_ids))
             else:

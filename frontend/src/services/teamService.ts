@@ -6,6 +6,7 @@ export interface Team {
   id: string;
   name: string;
   manager_id?: string;
+  branch_id?: string;
   created_at: string;
   members?: Array<{ id: string; email: string; full_name: string; role: string }>;
 }

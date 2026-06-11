@@ -14,6 +14,7 @@ import {
   type Team,
 } from "@/services/teamService";
 import { useUsers } from "@/services/userService";
+import { useBranches } from "@/hooks/useBranches";
 import { DataTable } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ import {
 const teamSchema = z.object({
   name: z.string().min(2),
   manager_id: z.string().optional(),
+  branch_id: z.string().optional(),
 });
 type TeamFormValues = z.infer<typeof teamSchema>;
 
@@ -66,6 +68,7 @@ export default function TeamsPage() {
   const { t } = useTranslation();
   const { data: teams, isLoading } = useTeams();
   const { data: users } = useUsers();
+  const { data: branches } = useBranches();
 
   const createMutation = useCreateTeam();
   const updateMutation = useUpdateTeam();
@@ -94,7 +97,7 @@ export default function TeamsPage() {
   });
 
   const managers = useMemo(
-    () => users?.filter((u) => u.role === "manager" || u.role === "admin") ?? [],
+    () => users?.filter((u) => u.role === "sales_manager" || u.role === "branch_manager" || u.role === "admin") ?? [],
     [users]
   );
 
@@ -109,6 +112,7 @@ export default function TeamsPage() {
     editForm.reset({
       name: team.name,
       manager_id: team.manager_id ?? "",
+      branch_id: team.branch_id ?? "",
     });
   };
 
@@ -377,6 +381,31 @@ export default function TeamsPage() {
               )}
             </div>
             <div className="space-y-2">
+              <Label>{t("teams.branch", "Branch")}</Label>
+              <Select
+                value={createForm.watch("branch_id") ?? ""}
+                onValueChange={(val) =>
+                  createForm.setValue("branch_id", val || undefined)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={t(
+                      "teams.selectBranch",
+                      "Select a branch"
+                    )}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches?.map((b: any) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>{t("teams.manager", "Manager")}</Label>
               <Select
                 value={createForm.watch("manager_id") ?? ""}
@@ -444,6 +473,31 @@ export default function TeamsPage() {
                   {editForm.formState.errors.name.message}
                 </p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label>{t("teams.branch", "Branch")}</Label>
+              <Select
+                value={editForm.watch("branch_id") ?? ""}
+                onValueChange={(val) =>
+                  editForm.setValue("branch_id", val || undefined)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue
+                    placeholder={t(
+                      "teams.selectBranch",
+                      "Select a branch"
+                    )}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches?.map((b: any) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>{t("teams.manager", "Manager")}</Label>

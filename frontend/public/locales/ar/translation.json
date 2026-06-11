@@ -328,8 +328,9 @@
   },
   "roles": {
     "admin": "مدير النظام",
-    "manager": "مدير المبيعات",
-    "agent": "مندوب مبيعات"
+    "branch_manager": "مدير الفرع",
+    "sales_manager": "مدير المبيعات",
+    "sales_rep": "مندوب مبيعات"
   },
   "gamification": {
     "myPoints": "نقاطي",

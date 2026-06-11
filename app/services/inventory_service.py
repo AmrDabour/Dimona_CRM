@@ -88,7 +88,7 @@ class InventoryService:
         data: DeveloperCreate,
         current_user: User,
     ) -> Developer:
-        if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+        if current_user.role not in [UserRole.ADMIN, UserRole.SALES_MANAGER]:
             raise PermissionDeniedException("Only admins and managers can create developers")
 
         new_developer = Developer(
@@ -226,7 +226,7 @@ class InventoryService:
         data: ProjectCreate,
         current_user: User,
     ) -> Project:
-        if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+        if current_user.role not in [UserRole.ADMIN, UserRole.SALES_MANAGER]:
             raise PermissionDeniedException("Only admins and managers can create projects")
 
         await self.get_developer_by_id(data.developer_id)
@@ -374,7 +374,7 @@ class InventoryService:
         data: UnitCreate,
         current_user: User,
     ) -> Unit:
-        if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+        if current_user.role not in [UserRole.ADMIN, UserRole.SALES_MANAGER]:
             raise PermissionDeniedException("Only admins and managers can create units")
 
         await self.get_project_by_id(data.project_id)
@@ -471,7 +471,7 @@ class InventoryService:
         image_data: UnitImageCreate,
         current_user: User,
     ) -> UnitImage:
-        if current_user.role not in [UserRole.ADMIN, UserRole.MANAGER]:
+        if current_user.role not in [UserRole.ADMIN, UserRole.SALES_MANAGER]:
             raise PermissionDeniedException("Only admins and managers can add unit images")
 
         await self.get_unit_by_id(unit_id)

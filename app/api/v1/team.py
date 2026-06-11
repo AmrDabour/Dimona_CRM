@@ -18,7 +18,7 @@ router = APIRouter(prefix="/team", tags=["Team"])
 @router.get("/activities", response_model=PaginatedResponse[TeamActivityItem])
 async def list_team_activities(
     current_user: Annotated[
-        User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))
+        User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
     pagination: Annotated[PaginationParams, Depends()],

@@ -16,16 +16,24 @@ router = APIRouter(prefix="/teams", tags=["Teams"])
 
 @router.get("", response_model=PaginatedResponse[TeamResponse])
 async def list_teams(
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     pagination: Annotated[PaginationParams, Depends()],
     include_members: bool = False,
 ):
-    """List all teams."""
+    """List all teams (Admin: all, Branch Manager: branch only, Sales Manager: all or branch depending on desired rules)."""
     team_service = TeamService(db)
+    
+    branch_id = None
+    if current_user.role == UserRole.BRANCH_MANAGER:
+        branch_id = current_user.branch_id
+    elif current_user.role == UserRole.SALES_MANAGER:
+        branch_id = current_user.branch_id  # optionally restrict sales managers to their branch teams too
+
     teams, total = await team_service.list_teams(
         page=pagination.page,
         page_size=pagination.page_size,
+        branch_id=branch_id,
         include_members=include_members,
     )
 
@@ -54,7 +62,7 @@ async def create_team(
 @router.get("/{team_id}", response_model=TeamResponse)
 async def get_team(
     team_id: UUID,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     include_members: bool = True,
 ):

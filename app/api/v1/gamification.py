@@ -62,11 +62,11 @@ async def get_leaderboard(
 @router.get("/agent/{agent_id}/points")
 async def get_agent_points(
     agent_id: UUID,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     month: Optional[str] = Query(None, description="YYYY-MM format"),
 ):
-    if current_user.role == UserRole.MANAGER:
+    if current_user.role == UserRole.SALES_MANAGER:
         from sqlalchemy import select
         from app.models.user import User as UserModel
 
@@ -82,13 +82,13 @@ async def get_agent_points(
 @router.get("/agent/{agent_id}/points/history")
 async def get_agent_point_history(
     agent_id: UUID,
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     month: Optional[str] = Query(None, description="YYYY-MM format"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
 ):
-    if current_user.role == UserRole.MANAGER:
+    if current_user.role == UserRole.SALES_MANAGER:
         from sqlalchemy import select
         from app.models.user import User as UserModel
 
@@ -175,7 +175,7 @@ async def update_tier(
 
 @router.post("/attendance/import")
 async def import_attendance_csv(
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     file: UploadFile = File(...),
     session_date: str = Form(..., description="YYYY-MM-DD"),
@@ -188,7 +188,7 @@ async def import_attendance_csv(
         raise BadRequestException("session_date must be YYYY-MM-DD") from e
 
     team_id = None
-    if current_user.role == UserRole.MANAGER:
+    if current_user.role == UserRole.SALES_MANAGER:
         if not current_user.team_id:
             raise BadRequestException("Manager has no team assigned")
         team_id = current_user.team_id
@@ -233,7 +233,7 @@ async def run_compliance_check(
         select(User).where(
             User.is_deleted.is_(False),
             User.is_active.is_(True),
-            User.role.in_([UserRole.AGENT, UserRole.MANAGER]),
+            User.role.in_([UserRole.SALES_REP, UserRole.SALES_MANAGER]),
         )
     )
     agents = agents_result.scalars().all()

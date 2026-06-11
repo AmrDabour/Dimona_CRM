@@ -1,3 +1,4 @@
+from app.models.branch import Branch
 from app.models.user import User
 from app.models.team import Team
 from app.models.lead import Lead
@@ -22,6 +23,7 @@ from app.models.gamification import (
 )
 
 __all__ = [
+    "Branch",
     "User",
     "Team",
     "Lead",

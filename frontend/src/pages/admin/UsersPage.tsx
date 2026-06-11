@@ -12,6 +12,7 @@ import {
   useResetPassword,
 } from "@/services/userService";
 import { useTeams } from "@/services/teamService";
+import { useBranches } from "@/hooks/useBranches";
 import { DataTable } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -57,8 +58,9 @@ const createUserSchema = z.object({
   full_name: z.string().min(2),
   phone: z.string().optional(),
   password: z.string().min(8),
-  role: z.enum(["admin", "manager", "agent"]),
+  role: z.enum(["admin", "branch_manager", "sales_manager", "sales_rep"]),
   team_id: z.string().optional(),
+  branch_id: z.string().optional(),
 });
 type CreateUserForm = z.infer<typeof createUserSchema>;
 
@@ -66,8 +68,9 @@ const editUserSchema = z.object({
   email: z.string().email(),
   full_name: z.string().min(2),
   phone: z.string().optional(),
-  role: z.enum(["admin", "manager", "agent"]),
+  role: z.enum(["admin", "branch_manager", "sales_manager", "sales_rep"]),
   team_id: z.string().optional(),
+  branch_id: z.string().optional(),
   is_active: z.boolean(),
 });
 type EditUserForm = z.infer<typeof editUserSchema>;
@@ -79,14 +82,16 @@ type ResetPasswordForm = z.infer<typeof resetPasswordSchema>;
 
 const ROLE_VARIANTS: Record<UserRole, "default" | "secondary" | "outline"> = {
   admin: "default",
-  manager: "secondary",
-  agent: "outline",
+  branch_manager: "default",
+  sales_manager: "secondary",
+  sales_rep: "outline",
 };
 
 export default function UsersPage() {
   const { t } = useTranslation();
   const { data: users, isLoading } = useUsers();
   const { data: teams } = useTeams();
+  const { data: branches } = useBranches();
 
   const createMutation = useCreateUser();
   const updateMutation = useUpdateUser();
@@ -100,7 +105,7 @@ export default function UsersPage() {
 
   const createForm = useForm<CreateUserForm>({
     resolver: zodResolver(createUserSchema),
-    defaultValues: { role: "agent" },
+    defaultValues: { role: "sales_rep" },
   });
 
   const editForm = useForm<EditUserForm>({
@@ -119,6 +124,7 @@ export default function UsersPage() {
       phone: user.phone ?? "",
       role: user.role,
       team_id: user.team_id ?? "",
+      branch_id: user.branch_id ?? "",
       is_active: user.is_active,
     });
   };
@@ -345,19 +351,36 @@ export default function UsersPage() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+                    <SelectItem value="branch_manager">{t("roles.branch_manager")}</SelectItem>
+                    <SelectItem value="sales_manager">{t("roles.sales_manager")}</SelectItem>
+                    <SelectItem value="sales_rep">{t("roles.sales_rep")}</SelectItem>
+                  </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{t("teams.branch", "Branch")}</Label>
+              <Select
+                value={createForm.watch("branch_id") ?? ""}
+                onValueChange={(val) =>
+                  createForm.setValue("branch_id", val || undefined)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("teams.selectBranch", "Select a branch")} />
+                </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">
-                    {t("roles.admin", "Admin")}
-                  </SelectItem>
-                  <SelectItem value="manager">
-                    {t("roles.manager", "Manager")}
-                  </SelectItem>
-                  <SelectItem value="agent">
-                    {t("roles.agent", "Agent")}
-                  </SelectItem>
+                  {branches?.map((b: any) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
               <Label>{t("users.team", "Team")}</Label>
               <Select
@@ -452,12 +475,35 @@ export default function UsersPage() {
                   <SelectItem value="admin">
                     {t("roles.admin", "Admin")}
                   </SelectItem>
-                  <SelectItem value="manager">
-                    {t("roles.manager", "Manager")}
+                  <SelectItem value="branch_manager">
+                    {t("roles.branch_manager", "Branch Manager")}
                   </SelectItem>
-                  <SelectItem value="agent">
-                    {t("roles.agent", "Agent")}
+                  <SelectItem value="sales_manager">
+                    {t("roles.sales_manager", "Sales Manager")}
                   </SelectItem>
+                  <SelectItem value="sales_rep">
+                    {t("roles.sales_rep", "Sales Rep")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("teams.branch", "Branch")}</Label>
+              <Select
+                value={editForm.watch("branch_id") ?? ""}
+                onValueChange={(val) =>
+                  editForm.setValue("branch_id", val || undefined)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("teams.selectBranch", "Select a branch")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches?.map((b: any) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -129,7 +129,7 @@ class AttendanceImportService:
         q = select(User).where(
             User.is_deleted.is_(False),
             User.is_active.is_(True),
-            User.role.in_([UserRole.AGENT, UserRole.MANAGER]),
+            User.role.in_([UserRole.SALES_REP, UserRole.SALES_MANAGER]),
         )
         if team_id is not None:
             q = q.where(User.team_id == team_id)

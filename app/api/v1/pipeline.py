@@ -35,9 +35,9 @@ async def get_pipeline_stats(
 
     base_query = select(Lead.status, func.count(Lead.id)).where(Lead.is_deleted == False)
 
-    if current_user.role == UserRole.AGENT:
+    if current_user.role == UserRole.SALES_REP:
         base_query = base_query.where(Lead.assigned_to == current_user.id)
-    elif current_user.role == UserRole.MANAGER:
+    elif current_user.role == UserRole.SALES_MANAGER:
         team_members_query = select(User.id).where(
             User.team_id == current_user.team_id,
             User.is_deleted == False,
@@ -105,7 +105,7 @@ import_export_router = APIRouter(prefix="/leads", tags=["Lead Import/Export"])
 @import_export_router.post("/import")
 async def import_leads(
     file: Annotated[UploadFile, File()],
-    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))],
+    current_user: Annotated[User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))],
     db: Annotated[AsyncSession, Depends(get_db)],
     source_id: Optional[UUID] = None,
 ):
@@ -118,7 +118,7 @@ async def import_leads(
     Optional columns: Email, WhatsApp, Status, Source
     """
     default_assigned_to = None
-    if current_user.role == UserRole.MANAGER:
+    if current_user.role == UserRole.SALES_MANAGER:
         default_assigned_to = current_user.id
 
     excel_service = ExcelService(db)

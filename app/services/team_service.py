@@ -1,5 +1,5 @@
 from uuid import UUID
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -30,6 +30,7 @@ class TeamService:
         self,
         page: int = 1,
         page_size: int = 20,
+        branch_id: Optional[UUID] = None,
         include_members: bool = False,
     ) -> Tuple[List[Team], int]:
         query = select(Team)
@@ -37,7 +38,10 @@ class TeamService:
         # during response serialization for async sessions.
         query = query.options(selectinload(Team.members))
 
-        count_query = select(func.count()).select_from(Team)
+        if branch_id:
+            query = query.where(Team.branch_id == branch_id)
+
+        count_query = select(func.count()).select_from(query.subquery())
         total = await self.db.scalar(count_query)
 
         query = query.offset((page - 1) * page_size).limit(page_size)
@@ -57,7 +61,7 @@ class TeamService:
                 select(User).where(
                     User.id == team_data.manager_id,
                     User.is_deleted.is_(False),
-                    User.role.in_([UserRole.ADMIN, UserRole.MANAGER]),
+                    User.role.in_([UserRole.ADMIN, UserRole.SALES_MANAGER]),
                 )
             )
             if not manager_result.scalar_one_or_none():
@@ -66,6 +70,7 @@ class TeamService:
         new_team = Team(
             name=team_data.name,
             manager_id=team_data.manager_id,
+            branch_id=team_data.branch_id,
         )
 
         self.db.add(new_team)
@@ -91,12 +96,16 @@ class TeamService:
                 select(User).where(
                     User.id == team_data.manager_id,
                     User.is_deleted.is_(False),
-                    User.role.in_([UserRole.ADMIN, UserRole.MANAGER]),
+                    User.role.in_([UserRole.ADMIN, UserRole.SALES_MANAGER]),
                 )
             )
             if not manager_result.scalar_one_or_none():
                 raise BadRequestException("Manager must be an admin or manager role user")
             team.manager_id = team_data.manager_id
+            
+        update_data = team_data.model_dump(exclude_unset=True)
+        if "branch_id" in update_data:
+            team.branch_id = update_data["branch_id"]
 
         await self.db.commit()
         return await self.get_team_by_id(team_id, include_members=True)

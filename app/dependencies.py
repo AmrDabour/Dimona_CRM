@@ -69,8 +69,8 @@ def require_roles(allowed_roles: list[UserRole]):
 
 
 RequireAdmin = Depends(require_roles([UserRole.ADMIN]))
-RequireAdminOrManager = Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))
-RequireAnyRole = Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER, UserRole.AGENT]))
+RequireAdminOrManager = Depends(require_roles([UserRole.ADMIN, UserRole.SALES_MANAGER]))
+RequireAnyRole = Depends(require_roles([UserRole.ADMIN, UserRole.SALES_MANAGER, UserRole.SALES_REP]))
 
 
 class PaginationParams:

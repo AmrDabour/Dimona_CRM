@@ -71,7 +71,7 @@ activity_router = APIRouter(prefix="/activities", tags=["Activities"])
 async def assign_manager_task(
     body: ManagerTaskAssign,
     current_user: Annotated[
-        User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))
+        User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -86,7 +86,7 @@ async def assign_manager_task(
 )
 async def list_manager_task_schedules(
     current_user: Annotated[
-        User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))
+        User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -101,7 +101,7 @@ async def list_manager_task_schedules(
 async def cancel_manager_task_schedule(
     schedule_id: UUID,
     current_user: Annotated[
-        User, Depends(require_roles([UserRole.ADMIN, UserRole.MANAGER]))
+        User, Depends(require_roles([UserRole.ADMIN, UserRole.BRANCH_MANAGER, UserRole.SALES_MANAGER]))
     ],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):

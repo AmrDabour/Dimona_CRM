@@ -35,6 +35,7 @@ class UserService:
         page: int = 1,
         page_size: int = 20,
         team_id: Optional[UUID] = None,
+        branch_id: Optional[UUID] = None,
         role: Optional[UserRole] = None,
         is_active: Optional[bool] = None,
     ) -> Tuple[List[User], int]:
@@ -42,6 +43,8 @@ class UserService:
 
         if team_id:
             query = query.where(User.team_id == team_id)
+        if branch_id:
+            query = query.where(User.branch_id == branch_id)
         if role:
             query = query.where(User.role == role)
         if is_active is not None:
@@ -80,6 +83,7 @@ class UserService:
             hashed_password=get_password_hash(user_data.password),
             role=user_data.role,
             team_id=user_data.team_id,
+            branch_id=user_data.branch_id,
         )
 
         self.db.add(new_user)
@@ -115,6 +119,8 @@ class UserService:
                 user.role = user_data.role
             if user_data.team_id is not None:
                 user.team_id = user_data.team_id
+            if hasattr(user_data, "branch_id") and user_data.branch_id is not None:
+                user.branch_id = user_data.branch_id
             if user_data.is_active is not None:
                 user.is_active = user_data.is_active
 

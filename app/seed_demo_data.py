@@ -68,19 +68,19 @@ async def seed() -> None:
         manager = await get_or_create_user(
             "manager.demo@dimora.com",
             "Nadia Sales Manager",
-            UserRole.MANAGER,
+            UserRole.SALES_MANAGER,
             "+201010000001",
         )
         agent_1 = await get_or_create_user(
             "agent1.demo@dimora.com",
             "Omar Senior Agent",
-            UserRole.AGENT,
+            UserRole.SALES_REP,
             "+201010000002",
         )
         agent_2 = await get_or_create_user(
             "agent2.demo@dimora.com",
             "Mariam Property Consultant",
-            UserRole.AGENT,
+            UserRole.SALES_REP,
             "+201010000003",
         )
 

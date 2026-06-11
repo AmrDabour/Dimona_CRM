@@ -22,8 +22,18 @@ class Team(Base, TimestampMixin):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    branch_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("branches.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Relationships
+    branch: Mapped["Branch | None"] = relationship(
+        "Branch",
+        back_populates="teams",
+        foreign_keys=[branch_id],
+    )
     members: Mapped[list["User"]] = relationship(
         "User",
         back_populates="team",
